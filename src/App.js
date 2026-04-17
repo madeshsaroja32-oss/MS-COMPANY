@@ -11,6 +11,7 @@ import Employees from './components/Admin/Employees';
 import Attendance from './components/Admin/Attendance';
 import Analytics from './components/Admin/Analytics';
 import LeaveManagement from './components/Admin/LeaveManagement';
+import AdminSettings from './components/Admin/AdminSettings';
 
 const PrivateRoute = ({ children, allowedRoles }) => {
   const { user } = useAuth();
@@ -23,7 +24,7 @@ const PrivateRoute = ({ children, allowedRoles }) => {
 
 function App() {
   const { loading } = useAuth();
-  console.log("Loading:",loading);
+  console.log("Loading:", loading);
   if (loading) return <div>Loading...</div>;
 
   return (
@@ -56,6 +57,14 @@ function App() {
             <Route path="attendance" element={<Attendance />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="leaves" element={<LeaveManagement />} />
+            <Route path="settings" element={<AdminSettings />} />
+            {/* New admin routes – placeholders */}
+            <Route path="departments" element={<div className="admin-card p-6">Departments page coming soon</div>} />
+            <Route path="tasks" element={<div className="admin-card p-6">Tasks page coming soon</div>} />
+            <Route path="evaluation" element={<div className="admin-card p-6">Evaluation page coming soon</div>} />
+            <Route path="designation" element={<div className="admin-card p-6">Designation page coming soon</div>} />
+            <Route path="evaluator" element={<div className="admin-card p-6">Evaluator page coming soon</div>} />
+            <Route path="users" element={<div className="admin-card p-6">Users page coming soon</div>} />
           </Route>
 
           <Route path="/" element={<Navigate to="/dashboard" />} />

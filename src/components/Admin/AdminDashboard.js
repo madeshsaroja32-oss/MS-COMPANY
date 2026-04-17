@@ -1,80 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
-import API from '../../utils/api';
-import EmployeeTable from './EmployeeTable';
-import AttendanceTable from './AttendanceTable';
-import Charts from './Charts';
-import LoginHistory from './LoginHistory';   // import the new component
 
 const AdminDashboard = () => {
-  const [stats, setStats] = useState({
+  const [metrics, setMetrics] = useState({
+    totalDepartments: 0,
+    totalDesignations: 0,
+    totalUsers: 0,
     totalEmployees: 0,
-    presentToday: 0,
-    lateToday: 0,
-    absentToday: 0
+    totalEvaluators: 0,
+    totalTasks: 0
   });
 
   useEffect(() => {
-    fetchStats();
+    // Mock data – replace with API call later
+    setMetrics({
+      totalDepartments: 5,
+      totalDesignations: 12,
+      totalUsers: 24,
+      totalEmployees: 18,
+      totalEvaluators: 6,
+      totalTasks: 34
+    });
   }, []);
 
-  const fetchStats = async () => {
-    try {
-      const { data } = await API.get('/admin/stats');
-      setStats(data);
-    } catch (error) {
-      console.error('Failed to fetch stats', error);
-    }
-  };
+  const cardData = [
+    { label: 'TOTAL DEPARTAMENTS', value: metrics.totalDepartments, icon: '🏢', color: 'from-blue-500 to-blue-600' },
+    { label: 'TOTAL DESIGNATIONS', value: metrics.totalDesignations, icon: '📌', color: 'from-purple-500 to-purple-600' },
+    { label: 'TOTAL USERS', value: metrics.totalUsers, icon: '👥', color: 'from-green-500 to-green-600' },
+    { label: 'TOTAL EMPLOYEES', value: metrics.totalEmployees, icon: '👨‍💼', color: 'from-orange-500 to-orange-600' },
+    { label: 'TOTAL EVALUATORS', value: metrics.totalEvaluators, icon: '📋', color: 'from-red-500 to-red-600' },
+    { label: 'TOTAL TASKS', value: metrics.totalTasks, icon: '✅', color: 'from-teal-500 to-teal-600' },
+  ];
 
   return (
     <div>
-      <h1 className="text-3xl mb-6">Admin Dashboard</h1>
-
-      {/* Stats Cards – now using the stats variable */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded shadow text-center">
-          <p className="text-gray-500">Total Employees</p>
-          <p className="text-3xl font-bold">{stats.totalEmployees}</p>
-        </div>
-        <div className="bg-white p-4 rounded shadow text-center">
-          <p className="text-gray-500">Present Today</p>
-          <p className="text-3xl font-bold text-green-600">{stats.presentToday}</p>
-        </div>
-        <div className="bg-white p-4 rounded shadow text-center">
-          <p className="text-gray-500">Late Today</p>
-          <p className="text-3xl font-bold text-yellow-600">{stats.lateToday}</p>
-        </div>
-        <div className="bg-white p-4 rounded shadow text-center">
-          <p className="text-gray-500">Absent Today</p>
-          <p className="text-3xl font-bold text-red-600">{stats.absentToday}</p>
-        </div>
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold text-gray-800">Dashboard</h2>
+        <p className="text-gray-500 mt-1">Welcome back, Administrator</p>
       </div>
 
-      {/* Navigation Links */}
-      <nav className="mb-4 flex flex-wrap gap-2">
-        <Link to="/admin/employees" className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-          Employees
-        </Link>
-        <Link to="/admin/attendance" className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-          Attendance
-        </Link>
-        <Link to="/admin/charts" className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-          Charts
-        </Link>
-        <Link to="/admin/login-history" className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-          Login History
-        </Link>
-      </nav>
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {cardData.map((card, idx) => (
+          <div key={idx} className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+            <div className={`bg-gradient-to-r ${card.color} p-4 text-white`}>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold tracking-wider opacity-90">{card.label}</span>
+                <span className="text-3xl">{card.icon}</span>
+              </div>
+              <div className="text-4xl font-bold mt-2">{card.value}</div>
+            </div>
+            <div className="p-4 bg-white">
+              <p className="text-xs text-gray-500">Updated just now</p>
+            </div>
+          </div>
+        ))}
+      </div>
 
-      {/* Nested Routes */}
-      <Routes>
-        <Route path="employees" element={<EmployeeTable />} />
-        <Route path="attendance" element={<AttendanceTable />} />
-        <Route path="charts" element={<Charts />} />
-        <Route path="login-history" element={<LoginHistory />} />
-        <Route index element={<div className="text-gray-500">Select a section from above</div>} />
-      </Routes>
+      {/* Recent Activity Section */}
+      <div className="mt-10 bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+        <h3 className="text-lg font-semibold text-gray-800 mb-3">Recent Activity</h3>
+        <p className="text-gray-500">No recent activity to display.</p>
+      </div>
     </div>
   );
 };
