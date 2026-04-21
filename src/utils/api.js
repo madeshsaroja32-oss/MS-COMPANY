@@ -1,17 +1,40 @@
-import axios from 'axios';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
+import Navbar from './components/Layout/Navbar';
+import Login from './components/Auth/Login';
+import Register from './components/Auth/Register';
+import EmployeeDashboard from './components/Employee/EmployeeDashboard';
+import AdminLayout from './components/Admin/AdminLayout';
+import AdminDashboard from './components/Admin/AdminDashboard';
 
-// Create an Axios instance with the base URL of your backend
-const API = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api'
-});
-
-// Add a request interceptor to attach the JWT token
-API.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+const PrivateRoute = ({ children, allowedRoles }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" />;
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/dashboard" />;
   }
-  return config;
-});
+  return children;
+};
 
-export default API;
+function App() {
+  const { loading } = useAuth();
+  if (loading) return <div>Loading...</div>;
+
+  return (
+    <BrowserRouter>
+      <Navbar />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/dashboard" element={<PrivateRoute allowedRoles={['employee', 'admin']}><EmployeeDashboard /></PrivateRoute>} />
+        <Route path="/admin" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout /></PrivateRoute>}>
+          <Route index element={<AdminDashboard />} />
+        </Route>
+        <Route path="/" element={<Navigate to="/dashboard" />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;

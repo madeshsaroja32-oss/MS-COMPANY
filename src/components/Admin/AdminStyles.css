@@ -1,16 +1,10 @@
-/* Smooth transitions & scrollbar */
-.transition-all {
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 200ms;
-}
-
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
   background: #f1f1f1;
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
@@ -20,9 +14,16 @@
   background: #94a3b8;
 }
 
-/* Active link styling (optional) */
+/* Smooth transitions */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+/* Active link style (optional) */
 .sidebar-nav a.active {
-  background-color: #eef2ff;
-  color: #4f46e5;
+  background-color: #1e293b;
+  color: white;
   font-weight: 500;
 }

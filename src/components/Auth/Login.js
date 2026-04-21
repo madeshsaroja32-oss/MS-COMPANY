@@ -24,36 +24,28 @@ const Login = () => {
     }
   }, []);
 
-  // Get admin credentials from localStorage (or use defaults)
+  // Get admin credentials (default or from localStorage)
   const getAdminCredentials = () => {
     const stored = localStorage.getItem('adminCredentials');
-    if (stored) {
-      return JSON.parse(stored);
-    }
-    // Default admin credentials (you can change these)
+    if (stored) return JSON.parse(stored);
     return { email: 'admin@mscompany.com', password: 'admin123' };
   };
 
-  // Regular login (employee or admin)
+  // Regular login (employee or admin via form)
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
 
-    // 1. Check if it's admin login
     const adminCreds = getAdminCredentials();
     if (email === adminCreds.email && password === adminCreds.password) {
-      // Admin login
-      const adminData = {
-        name: 'Administrator',
-        email: adminCreds.email,
-        role: 'admin'
-      };
+      // Admin login via form
+      const adminData = { name: 'Administrator', email: adminCreds.email, role: 'admin' };
       login(adminData, 'admin-token', 'admin');
       navigate('/admin');
       return;
     }
 
-    // 2. Otherwise, check employee (registered user)
+    // Employee login
     const registeredUser = JSON.parse(localStorage.getItem('registeredUser'));
     if (!registeredUser) {
       setError('No registered user found. Please register first.');
@@ -77,26 +69,10 @@ const Login = () => {
     }
   };
 
-  // Auto‑fill admin credentials and submit
-  const handleAutoAdminLogin = () => {
+  // Direct admin login (no form submission)
+  const handleDirectAdminLogin = () => {
     const adminCreds = getAdminCredentials();
-    setEmail(adminCreds.email);
-    setPassword(adminCreds.password);
-    // Small delay to let state update, then submit
-    setTimeout(() => {
-      const fakeEvent = { preventDefault: () => {} };
-      handleSubmit(fakeEvent);
-    }, 50);
-  };
-
-  // One‑click admin demo (bypasses form – uses the same admin credentials but directly)
-  const demoAdminLogin = () => {
-    const adminCreds = getAdminCredentials();
-    const adminData = {
-      name: 'Administrator',
-      email: adminCreds.email,
-      role: 'admin'
-    };
+    const adminData = { name: 'Administrator', email: adminCreds.email, role: 'admin' };
     login(adminData, 'admin-token', 'admin');
     navigate('/admin');
   };
@@ -129,11 +105,20 @@ const Login = () => {
         </form>
 
         <div style={{ marginTop: '15px', textAlign: 'center' }}>
-          <button type="button" onClick={handleAutoAdminLogin} style={{ background: 'transparent', border: '1px solid #667eea', color: '#667eea', padding: '8px 16px', borderRadius: '5px', cursor: 'pointer', marginRight: '10px' }}>
-            🔐 Auto Employee Login (fill & submit)
-          </button>
-          <button type="button" onClick={demoAdminLogin} style={{ background: 'transparent', border: '1px solid #28a745', color: '#28a745', padding: '8px 16px', borderRadius: '5px', cursor: 'pointer' }}>
-            ⚡ One‑Click Admin Demo
+          <button
+            type="button"
+            onClick={handleDirectAdminLogin}
+            style={{
+              background: '#4a6cf7',
+              color: 'white',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              border: 'none',
+              fontWeight: '500'
+            }}
+          >
+            🔐 Admin Login
           </button>
         </div>
 
