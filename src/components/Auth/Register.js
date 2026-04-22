@@ -5,24 +5,41 @@ import '../../index.css';
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    name: '', email: '', password: '', confirmPassword: '', phone: '', position: '', department: ''
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    phone: '',
+    position: '',
+    department: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [photo, setPhoto] = useState('');
+  const [location, setLocation] = useState(null);
+  const [locationStatus, setLocationStatus] = useState('prompt');
   const navigate = useNavigate();
   const { register } = useAuth();
 
-  const [locationStatus, setLocationStatus] = useState('prompt');
-
+  // Capture location on component mount
   useEffect(() => {
     if (!navigator.geolocation) {
       setLocationStatus('unavailable');
     } else {
       navigator.geolocation.getCurrentPosition(
-        () => setLocationStatus('granted'),
-        () => setLocationStatus('denied')
+        (position) => {
+          setLocationStatus('granted');
+          setLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            address: 'Captured during registration'
+          });
+        },
+        (err) => {
+          setLocationStatus('denied');
+          console.warn(err.message);
+        }
       );
     }
   }, []);
@@ -61,9 +78,10 @@ const Register = () => {
       department: formData.department,
       position: formData.position,
       photo: photo,
-      registeredAt: new Date().toISOString()
+      registeredAt: new Date().toISOString(),
+      location: location || { lat: null, lng: null, address: 'Not captured' }  // store location
     };
-    register(userData); // stores in localStorage
+    register(userData); // stores in localStorage via AuthContext
     alert('Registration successful! Please login.');
     navigate('/login');
   };
@@ -93,12 +111,12 @@ const Register = () => {
             <div style={{ position: 'relative' }}>
               <label>Password</label>
               <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} required style={{ paddingRight: '50px' }} />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '10px', top: '35px', background: 'none', border: 'none' }}>{showPassword ? '🙈' : '👁️'}</button>
+              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '-120px', top: '25px', background: 'none', border: 'none' }}>{showPassword ? '🙈' : '👁️'}</button>
             </div>
             <div style={{ position: 'relative' }}>
               <label>Confirm Password</label>
               <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required style={{ paddingRight: '50px' }} />
-              <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: 'absolute', right: '10px', top: '35px', background: 'none', border: 'none' }}>{showConfirmPassword ? '🙈' : '👁️'}</button>
+              <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: 'absolute', right: '-120px', top: '25px', background: 'none', border: 'none' }}>{showConfirmPassword ? '🙈' : '👁️'}</button>
             </div>
             <div><label>Phone</label><input type="text" name="phone" value={formData.phone} onChange={handleChange} /></div>
             <div><label>Department</label><select name="department" value={formData.department} onChange={handleChange} required>{departments.map((d,i) => <option key={i} value={d === 'Select department' ? '' : d}>{d}</option>)}</select></div>

@@ -8,6 +8,8 @@ import EmployeeDashboard from './components/Employee/EmployeeDashboard';
 import AdminLayout from './components/Admin/AdminLayout';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import Analytics from './components/Admin/Analytics';
+import Attendance from './components/Admin/Attendance';   // new
+import Employees from './components/Admin/Employees';     // new
 
 const PrivateRoute = ({ children, allowedRoles }) => {
   const { user } = useAuth();
@@ -31,6 +33,8 @@ function App() {
         <Route path="/dashboard" element={<PrivateRoute allowedRoles={['employee', 'admin']}><EmployeeDashboard /></PrivateRoute>} />
         <Route path="/admin" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout /></PrivateRoute>}>
           <Route index element={<AdminDashboard />} />
+          <Route path="attendance" element={<Attendance />} />   {/* new route */}
+          <Route path="employees" element={<Employees />} />     {/* new route */}
           <Route path="analytics" element={<Analytics />} />
         </Route>
         <Route path="/" element={<Navigate to="/dashboard" />} />

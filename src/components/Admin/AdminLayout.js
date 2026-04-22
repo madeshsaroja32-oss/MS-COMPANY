@@ -11,47 +11,60 @@ const AdminLayout = () => {
     navigate('/login');
   };
 
+  const styles = {
+    container: { display: 'flex', height: '100vh', background: '#f1f5f9' },
+    sidebar: { width: '280px', background: '#1e293b', color: '#cbd5e1', display: 'flex', flexDirection: 'column' },
+    sidebarHeader: { padding: '24px', borderBottom: '1px solid #334155' },
+    sidebarTitle: { fontSize: '24px', fontWeight: 'bold', color: 'white', margin: 0 },
+    sidebarSub: { fontSize: '12px', color: '#94a3b8', marginTop: '4px', textTransform: 'uppercase' },
+    nav: { flex: 1, padding: '16px' },
+    navLabel: { fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', color: '#64748b', marginBottom: '12px' },
+    navLink: { display: 'flex', alignItems: 'center', padding: '10px 16px', borderRadius: '8px', color: '#cbd5e1', textDecoration: 'none', marginBottom: '4px' },
+    main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+    header: { background: 'white', padding: '12px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' },
+    headerLeft: { fontSize: '20px', fontWeight: '600', color: '#1e293b' },
+    headerRight: { display: 'flex', alignItems: 'center', gap: '20px' },
+    userInfo: { display: 'flex', alignItems: 'center', gap: '12px' },
+    avatar: { width: '40px', height: '40px', borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' },
+    userDetails: { textAlign: 'right' },
+    userName: { fontSize: '14px', fontWeight: '600', color: '#1e293b', margin: 0 },
+    userEmail: { fontSize: '12px', color: '#64748b', margin: 0 },
+    logoutBtn: { background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' },
+    content: { flex: 1, overflowY: 'auto', padding: '24px', background: '#f8fafc' },
+  };
+
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar - corporate dark blue */}
-      <aside className="w-72 bg-slate-800 shadow-xl flex flex-col">
-        <div className="p-6 border-b border-slate-700">
-          <h2 className="text-2xl font-bold text-white">Employee MS</h2>
-          <p className="text-xs text-slate-400 mt-1">Admin Panel</p>
+    <div style={styles.container}>
+      <aside style={styles.sidebar}>
+        <div style={styles.sidebarHeader}>
+          <h2 style={styles.sidebarTitle}>Employee MS</h2>
+          <p style={styles.sidebarSub}>Admin Panel</p>
         </div>
-        <nav className="flex-1 px-4 py-6">
-          <p className="text-xs font-semibold text-slate-500 uppercase mb-4">Main Navigation</p>
-          <ul className="space-y-1">
-            <li>
-              <Link to="/admin" className="flex items-center px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition">
-                <span className="mr-3">📊</span> Dashboard
-              </Link>
-            </li>
-            <li>
-              <Link to="/admin/analytics" className="flex items-center px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition">
-                <span className="mr-3">📈</span> Analytics
-              </Link>
-            </li>
+        <nav style={styles.nav}>
+          <p style={styles.navLabel}>Main Navigation</p>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            <li><Link to="/admin" style={styles.navLink} onMouseEnter={e => e.currentTarget.style.background = '#334155'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}><span style={{ marginRight: '12px' }}>📊</span> Dashboard</Link></li>
+            <li><Link to="/admin/attendance" style={styles.navLink} onMouseEnter={e => e.currentTarget.style.background = '#334155'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}><span style={{ marginRight: '12px' }}>📆</span> Attendance</Link></li>
+            <li><Link to="/admin/employees" style={styles.navLink} onMouseEnter={e => e.currentTarget.style.background = '#334155'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}><span style={{ marginRight: '12px' }}>👥</span> Employees</Link></li>
+            <li><Link to="/admin/analytics" style={styles.navLink} onMouseEnter={e => e.currentTarget.style.background = '#334155'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}><span style={{ marginRight: '12px' }}>📈</span> Analytics</Link></li>
           </ul>
         </nav>
-        <div className="p-4 border-t border-slate-700">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-slate-600 flex items-center justify-center text-white font-bold">A</div>
-            <div>
-              <p className="text-sm font-semibold text-white">{user?.name || 'Admin'}</p>
-              <p className="text-xs text-slate-400">{user?.email || 'admin@mscompany.com'}</p>
-            </div>
-          </div>
-        </div>
       </aside>
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white shadow px-8 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
-          <button onClick={handleLogout} className="text-sm text-red-500 hover:text-red-700">Logout</button>
+      <div style={styles.main}>
+        <header style={styles.header}>
+          <div style={styles.headerLeft}>Admin</div>
+          <div style={styles.headerRight}>
+            <div style={styles.userInfo}>
+              <div style={styles.userDetails}>
+                <p style={styles.userName}>{user?.name || 'Administrator'}</p>
+                <p style={styles.userEmail}>{user?.email || 'admin@mscompany.com'}</p>
+              </div>
+              <div style={styles.avatar}>A</div>
+            </div>
+            <button onClick={handleLogout} style={styles.logoutBtn}>Logout</button>
+          </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
+        <main style={styles.content}>
           <Outlet />
         </main>
       </div>

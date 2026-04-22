@@ -99,7 +99,7 @@ const Login = () => {
           <div style={{ position: 'relative' }}>
             <label>Password</label>
             <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required style={{ paddingRight: '50px' }} />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '10px', top: '35px', background: 'none', border: 'none', cursor: 'pointer' }}>{showPassword ? '🙈' : '👁️'}</button>
+            <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '-120px', top: '25px', background: 'none', border: 'none', cursor: 'pointer' }}>{showPassword ? '🙈' : '👁️'}</button>
           </div>
           <button type="submit">Next</button>
         </form>

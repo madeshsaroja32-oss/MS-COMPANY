@@ -1,68 +1,61 @@
 import React, { useState, useEffect } from 'react';
-import { getEmployees, addEmployee, updateEmployee, deleteEmployee } from '../../utils/adminDataService';
+import { getEmployees, deleteEmployee, addEmployee } from '../../utils/adminDataService';
 
 const Employees = () => {
   const [employees, setEmployees] = useState([]);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     department: '',
     position: '',
-    phone: ''
+    phone: '',
   });
 
-  // Load employees from service
+  // Helper to merge registered user into admin employees (preserves location)
+  const getAllEmployees = () => {
+    let adminEmps = getEmployees();
+    const registeredUser = localStorage.getItem('registeredUser');
+    if (registeredUser) {
+      const user = JSON.parse(registeredUser);
+      const existsIndex = adminEmps.findIndex(emp => emp.email === user.email);
+      if (existsIndex === -1) {
+        // Add new employee with location
+        const newEmp = {
+          id: adminEmps.length + 1,
+          name: user.name,
+          email: user.email,
+          department: user.department || 'Not specified',
+          position: user.position || 'Employee',
+          phone: user.phone || '',
+          location: user.location || { lat: null, lng: null, address: 'Not captured' }
+        };
+        adminEmps.push(newEmp);
+        // Save back to storage
+        localStorage.setItem('admin_employees', JSON.stringify(adminEmps));
+      } else {
+        // Update existing employee if location is missing
+        const existing = adminEmps[existsIndex];
+        if (!existing.location && user.location) {
+          adminEmps[existsIndex] = { ...existing, location: user.location };
+          localStorage.setItem('admin_employees', JSON.stringify(adminEmps));
+        }
+      }
+    }
+    return adminEmps;
+  };
+
   const loadEmployees = () => {
-    setEmployees(getEmployees());
+    const allEmps = getAllEmployees();
+    setEmployees(allEmps);
   };
 
   useEffect(() => {
     loadEmployees();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Filter employees based on search
-  const filteredEmployees = employees.filter(emp =>
-    emp.name.toLowerCase().includes(search.toLowerCase()) ||
-    emp.email.toLowerCase().includes(search.toLowerCase()) ||
-    emp.department.toLowerCase().includes(search.toLowerCase())
-  );
-
-  // Open modal for adding new employee
-  const openAddModal = () => {
-    setEditingEmployee(null);
-    setFormData({ name: '', email: '', department: '', position: '', phone: '' });
-    setShowModal(true);
-  };
-
-  // Open modal for editing existing employee
-  const openEditModal = (emp) => {
-    setEditingEmployee(emp.id);
-    setFormData({ ...emp }); // copy employee data
-    setShowModal(true);
-  };
-
-  // Handle form input changes
-  const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  // Save employee (add or update)
-  const handleSave = () => {
-    if (editingEmployee) {
-      // Update existing employee
-      updateEmployee(editingEmployee, formData);
-    } else {
-      // Add new employee
-      addEmployee(formData);
-    }
-    setShowModal(false);
-    loadEmployees(); // refresh list
-  };
-
-  // Delete employee
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this employee?')) {
       deleteEmployee(id);
@@ -70,155 +63,167 @@ const Employees = () => {
     }
   };
 
+  const handleAddEmployee = () => {
+    setShowModal(true);
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
+    setFormData({ name: '', email: '', department: '', position: '', phone: '' });
+  };
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSaveEmployee = () => {
+    if (!formData.name || !formData.email) {
+      alert('Name and email are required');
+      return;
+    }
+    addEmployee(formData);
+    handleModalClose();
+    loadEmployees();
+  };
+
+  const filteredEmployees = employees.filter(emp =>
+    emp.name.toLowerCase().includes(search.toLowerCase()) ||
+    emp.email.toLowerCase().includes(search.toLowerCase()) ||
+    emp.department.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const deptCount = {};
+  employees.forEach(emp => {
+    deptCount[emp.department] = (deptCount[emp.department] || 0) + 1;
+  });
+  const deptBreakdown = Object.entries(deptCount).slice(0, 5);
+
+  const styles = {
+    container: { background: '#f8fafc', minHeight: '100vh', padding: '24px' },
+    wrapper: { maxWidth: '1400px', margin: '0 auto' },
+    splitGrid: { display: 'grid', gridTemplateColumns: '1fr 350px', gap: '24px' },
+    tableCard: { background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' },
+    summaryCard: { background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', height: 'fit-content' },
+    title: { fontSize: '24px', fontWeight: '700', marginBottom: '8px', color: '#0f172a' },
+    subtitle: { fontSize: '14px', color: '#475569', marginBottom: '24px' },
+    search: { padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', width: '100%', maxWidth: '300px', marginBottom: '20px', fontSize: '14px' },
+    addBtn: { background: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', marginLeft: 'auto' },
+    tableWrapper: { overflowX: 'auto' },
+    table: { width: '100%', borderCollapse: 'collapse', border: '1px solid #e2e8f0', borderRadius: '12px' },
+    th: { padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' },
+    td: { padding: '12px 16px', fontSize: '14px', borderBottom: '1px solid #e2e8f0' },
+    deleteBtn: { background: '#ef4444', color: 'white', border: 'none', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' },
+    statItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #e2e8f0' },
+    modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+    modalContent: { background: 'white', borderRadius: '16px', padding: '24px', width: '90%', maxWidth: '500px' },
+    modalTitle: { fontSize: '20px', fontWeight: '600', marginBottom: '16px' },
+    input: { width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', marginBottom: '12px', fontSize: '14px' },
+    modalButtons: { display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' },
+    cancelBtn: { background: '#6c757d', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' },
+    saveBtn: { background: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' },
+  };
+
+  // Helper to format location display
+  const formatLocation = (location) => {
+    if (!location) return '—';
+    if (location.address && location.address !== 'Not captured') return location.address;
+    if (location.lat && location.lng) return `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
+    return 'Not captured';
+  };
+
   return (
-    <div className="bg-white rounded-xl shadow-md p-5 border border-gray-200">
-      <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-        <h3 className="text-xl font-semibold text-gray-800">Employee Details</h3>
-        <button
-          onClick={openAddModal}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm"
-        >
-          + Add Employee
-        </button>
+    <div style={styles.container}>
+      <div style={styles.wrapper}>
+        <div style={styles.splitGrid}>
+          {/* LEFT COLUMN: Employee Table */}
+          <div style={styles.tableCard}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap' }}>
+              <h1 style={styles.title}>Employees</h1>
+              <button onClick={handleAddEmployee} style={styles.addBtn}>+ Add Employee</button>
+            </div>
+            <p style={styles.subtitle}>{employees.length} total employees</p>
+            <input
+              type="text"
+              placeholder="Search employees..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={styles.search}
+            />
+            <div style={styles.tableWrapper}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Name</th>
+                    <th style={styles.th}>Email</th>
+                    <th style={styles.th}>Department</th>
+                    <th style={styles.th}>Position</th>
+                    <th style={styles.th}>Phone</th>
+                    <th style={styles.th}>Location</th>
+                    <th style={styles.th}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEmployees.map(emp => (
+                    <tr key={emp.id}>
+                      <td style={styles.td}>{emp.name}</td>
+                      <td style={styles.td}>{emp.email}</td>
+                      <td style={styles.td}>{emp.department}</td>
+                      <td style={styles.td}>{emp.position}</td>
+                      <td style={styles.td}>{emp.phone}</td>
+                      <td style={styles.td}>{formatLocation(emp.location)}</td>
+                      <td style={styles.td}>
+                        <button onClick={() => handleDelete(emp.id)} style={styles.deleteBtn}>Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredEmployees.length === 0 && (
+                    <tr>
+                      <td colSpan="7" style={{ ...styles.td, textAlign: 'center' }}>No employees found</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Summary Card */}
+          <div style={styles.summaryCard}>
+            <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>Summary</h3>
+            <div style={styles.statItem}>
+              <span>Total Employees</span>
+              <span style={{ fontWeight: '700' }}>{employees.length}</span>
+            </div>
+            <div style={{ marginTop: '16px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px' }}>Department Breakdown</h4>
+              {deptBreakdown.map(([dept, count]) => (
+                <div key={dept} style={styles.statItem}>
+                  <span>{dept}</span>
+                  <span>{count}</span>
+                </div>
+              ))}
+              {deptBreakdown.length === 0 && <p style={{ fontSize: '12px', color: '#64748b' }}>No departments</p>}
+            </div>
+            <div style={{ marginTop: '20px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+              <p style={{ fontSize: '12px', color: '#64748b' }}>Last updated: {new Date().toLocaleDateString()}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Search */}
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Search employees..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full md:w-80 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-        />
-      </div>
-
-      {/* Employee Table */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Position</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {filteredEmployees.map(emp => (
-              <tr key={emp.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">{emp.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">{emp.email}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">{emp.department}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">{emp.position}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">{emp.phone}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <button
-                    onClick={() => openEditModal(emp)}
-                    className="text-blue-600 hover:text-blue-800 mr-3 text-sm"
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(emp.id)}
-                    className="text-red-600 hover:text-red-800 text-sm"
-                  >
-                    🗑️ Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {filteredEmployees.length === 0 && (
-              <tr>
-                <td colSpan="6" className="text-center py-4 text-gray-500">
-                  No employees found
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Modal for Add/Edit Employee */}
+      {/* Modal for Add Employee */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">
-              {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
-            </h3>
-            <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                <input
-                  type="text"
-                  name="department"
-                  value={formData.department}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
-                <input
-                  type="text"
-                  name="position"
-                  value={formData.position}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <input
-                  type="text"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                >
-                  {editingEmployee ? 'Update' : 'Add'} Employee
-                </button>
-              </div>
-            </form>
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <h3 style={styles.modalTitle}>Add New Employee</h3>
+            <input type="text" name="name" placeholder="Name" value={formData.name} onChange={handleInputChange} style={styles.input} required />
+            <input type="email" name="email" placeholder="Email" value={formData.email} onChange={handleInputChange} style={styles.input} required />
+            <input type="text" name="department" placeholder="Department" value={formData.department} onChange={handleInputChange} style={styles.input} />
+            <input type="text" name="position" placeholder="Position" value={formData.position} onChange={handleInputChange} style={styles.input} />
+            <input type="text" name="phone" placeholder="Phone" value={formData.phone} onChange={handleInputChange} style={styles.input} />
+            <div style={styles.modalButtons}>
+              <button onClick={handleModalClose} style={styles.cancelBtn}>Cancel</button>
+              <button onClick={handleSaveEmployee} style={styles.saveBtn}>Save</button>
+            </div>
           </div>
         </div>
       )}

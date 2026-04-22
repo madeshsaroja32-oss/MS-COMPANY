@@ -158,7 +158,7 @@ export const getDashboardStats = () => {
   };
 };
 
-// Monthly attendance data (real)
+// Monthly attendance data (present/absent only)
 export const getMonthlyAttendance = (year, month) => {
   const records = getAttendanceRecords();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -168,10 +168,8 @@ export const getMonthlyAttendance = (year, month) => {
     const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     const dayRecords = records.filter(r => r.date === dateStr);
     if (dayRecords.length === 0) continue;
-    const present = dayRecords.filter(r => r.status === 'Present').length;
-    const absent = dayRecords.filter(r => r.status === 'Absent').length;
-    presentCountByDay[day-1] = present;
-    absentCountByDay[day-1] = absent;
+    presentCountByDay[day-1] = dayRecords.filter(r => r.status === 'Present').length;
+    absentCountByDay[day-1] = dayRecords.filter(r => r.status === 'Absent').length;
   }
   const chartData = [];
   for (let day = 1; day <= daysInMonth; day++) {
@@ -184,9 +182,35 @@ export const getMonthlyAttendance = (year, month) => {
   return chartData;
 };
 
-// Department attendance percentages (real) – FIXED: removed unused 'employees' variable
+// Monthly attendance with late (present, late, absent)
+export const getMonthlyAttendanceWithLate = (year, month) => {
+  const records = getAttendanceRecords();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const presentCount = Array(daysInMonth).fill(0);
+  const lateCount = Array(daysInMonth).fill(0);
+  const absentCount = Array(daysInMonth).fill(0);
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const dayRecords = records.filter(r => r.date === dateStr);
+    presentCount[day-1] = dayRecords.filter(r => r.status === 'Present').length;
+    lateCount[day-1] = dayRecords.filter(r => r.status === 'Late').length;
+    absentCount[day-1] = dayRecords.filter(r => r.status === 'Absent').length;
+  }
+  const chartData = [];
+  for (let day = 1; day <= daysInMonth; day++) {
+    chartData.push({
+      name: `${day}`,
+      present: presentCount[day-1],
+      late: lateCount[day-1],
+      absent: absentCount[day-1],
+    });
+  }
+  return chartData;
+};
+
+// Department attendance percentages (real)
 export const getDepartmentAttendancePercentage = () => {
-  const employees = getEmployees(); // actually used below for department mapping
+  const employees = getEmployees();
   const records = getAttendanceRecords();
   const deptMap = new Map();
   employees.forEach(emp => {
@@ -225,4 +249,42 @@ export const getOverallAttendanceDistribution = () => {
     { name: 'Absent', value: (absent / total) * 100, color: '#ef4444' },
     { name: 'Late', value: (late / total) * 100, color: '#eab308' },
   ];
+};
+
+// Get real employees (including registered user) with location
+export const getRealEmployees = () => {
+  const adminEmployees = getEmployees();
+  const registeredUser = localStorage.getItem('registeredUser');
+  if (registeredUser) {
+    const user = JSON.parse(registeredUser);
+    const exists = adminEmployees.some(emp => emp.email === user.email);
+    if (!exists) {
+      const newEmployee = {
+        id: adminEmployees.length + 1,
+        name: user.name,
+        email: user.email,
+        department: user.department || 'Not specified',
+        position: user.position || 'Employee',
+        phone: user.phone || '',
+        location: user.location || { lat: null, lng: null, address: 'Not captured' }
+      };
+      adminEmployees.push(newEmployee);
+      localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(adminEmployees));
+    } else {
+      // Update existing employee with location if missing
+      let updated = false;
+      const updatedEmployees = adminEmployees.map(emp => {
+        if (emp.email === user.email && !emp.location) {
+          updated = true;
+          return { ...emp, location: user.location || { lat: null, lng: null, address: 'Not captured' } };
+        }
+        return emp;
+      });
+      if (updated) {
+        localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(updatedEmployees));
+        return updatedEmployees;
+      }
+    }
+  }
+  return adminEmployees;
 };
