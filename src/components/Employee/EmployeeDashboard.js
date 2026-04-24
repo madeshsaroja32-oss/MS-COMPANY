@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Webcam from 'react-webcam';
-import * as faceapi from 'face-api.js/dist/face-api.min.js';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './EmployeeDashboard.css';
 
@@ -39,9 +38,9 @@ const EmployeeDashboard = () => {
   useEffect(() => {
     const loadModels = async () => {
       try {
-        await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-        await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
-        await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
+        await window.faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+        await window.faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+        await window.faceapi.nets.faceRecognitionNet.loadFromUri('/models');
         setModelsLoaded(true);
         console.log('Face models loaded');
       } catch (err) {
@@ -62,15 +61,15 @@ const EmployeeDashboard = () => {
       img.onload = resolve;
       img.onerror = reject;
     });
-    const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+    const detection = await window.faceapi.detectSingleFace(img, new window.faceapi.TinyFaceDetectorOptions())
       .withFaceLandmarks()
       .withFaceDescriptor();
     if (!detection) return false;
     const capturedDescriptor = detection.descriptor;
     const storedDescriptor = JSON.parse(localStorage.getItem(storedDescriptorKey));
     if (!storedDescriptor) return false;
-    const distance = faceapi.euclideanDistance(capturedDescriptor, storedDescriptor);
-    return distance < 0.6; // threshold (adjust as needed)
+    const distance = window.faceapi.euclideanDistance(capturedDescriptor, storedDescriptor);
+    return distance < 0.6;
   };
 
   // Calculate present percentage for pie chart

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import * as faceapi from 'face-api.js/dist/face-api.min.js';
 import '../../index.css';
 
 const Register = () => {
@@ -31,9 +30,9 @@ const Register = () => {
   useEffect(() => {
     const loadModels = async () => {
       try {
-        await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-        await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
-        await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
+        await window.faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+        await window.faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+        await window.faceapi.nets.faceRecognitionNet.loadFromUri('/models');
         setModelsLoaded(true);
         console.log('Face models loaded');
       } catch (err) {
@@ -73,32 +72,29 @@ const Register = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Reset face status
     setFaceRegistered(false);
     setFaceError('');
 
-    // Convert to base64 for preview
+    // Preview photo
     const reader = new FileReader();
     reader.onloadend = () => setPhoto(reader.result);
     reader.readAsDataURL(file);
 
-    // If models are not loaded, we cannot detect face
     if (!modelsLoaded) {
       setFaceError('Face models not yet loaded. Please wait and try again.');
       return;
     }
 
-    // Create an image element for detection
+    // Create an image element for face detection
     const img = new Image();
     img.src = URL.createObjectURL(file);
     img.onload = async () => {
       try {
-        const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+        const detection = await window.faceapi.detectSingleFace(img, new window.faceapi.TinyFaceDetectorOptions())
           .withFaceLandmarks()
           .withFaceDescriptor();
         if (detection) {
           const descriptor = Array.from(detection.descriptor);
-          // Store descriptor using current email (will be final email)
           localStorage.setItem(`faceDescriptor_${formData.email}`, JSON.stringify(descriptor));
           setFaceRegistered(true);
           setFaceError('');
@@ -130,8 +126,6 @@ const Register = () => {
       setError('Passwords do not match');
       return;
     }
-    // Optionally require face registration if models loaded and face detection succeeded
-    // but we'll allow registration even if face detection failed (optional).
 
     const userData = {
       name: formData.name,
@@ -186,12 +180,12 @@ const Register = () => {
             <div style={{ position: 'relative' }}>
               <label>Password</label>
               <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} required style={{ paddingRight: '50px' }} />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '-120px', top: '25px', background: 'none', border: 'none' }}>{showPassword ? '🙈' : '👁️'}</button>
+              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '10px', top: '35px', background: 'none', border: 'none' }}>{showPassword ? '🙈' : '👁️'}</button>
             </div>
             <div style={{ position: 'relative' }}>
               <label>Confirm Password</label>
               <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required style={{ paddingRight: '50px' }} />
-              <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: 'absolute', right: '-120px', top: '25px', background: 'none', border: 'none' }}>{showConfirmPassword ? '🙈' : '👁️'}</button>
+              <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: 'absolute', right: '10px', top: '35px', background: 'none', border: 'none' }}>{showConfirmPassword ? '🙈' : '👁️'}</button>
             </div>
             <div><label>Phone</label><input type="text" name="phone" value={formData.phone} onChange={handleChange} placeholder="e.g., +91 9876543210" /></div>
             <div>
