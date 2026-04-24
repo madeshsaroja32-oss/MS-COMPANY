@@ -60,6 +60,7 @@ const Login = () => {
         department: registeredUser.department,
         position: registeredUser.position,
         photo: registeredUser.photo,
+        address: registeredUser.address,   // 👈 ADDED: include address
         role: 'employee'
       };
       login(userData, 'mock-user-token', 'employee');

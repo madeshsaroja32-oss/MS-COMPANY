@@ -47,6 +47,11 @@ const AdminDashboard = () => {
     loadDashboardData();
   }, [selectedYear, selectedMonth]);
 
+  // Scroll to bottom function
+  const scrollToBottom = () => {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  };
+
   const currentYear = new Date().getFullYear();
   const years = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -77,7 +82,20 @@ const AdminDashboard = () => {
     progressFill: (percent) => ({ width: `${percent}%`, background: '#3b82f6', height: '100%' }),
     chartScrollWrapper: { overflowX: 'auto', width: '100%' },
     chartInner: { minWidth: '800px' },
-    // Responsive: stack on mobile
+    scrollButton: {
+      display: 'block',
+      margin: '0 auto 32px auto',
+      background: '#3b82f6',
+      color: 'white',
+      border: 'none',
+      padding: '10px 20px',
+      borderRadius: '40px',
+      cursor: 'pointer',
+      fontSize: '14px',
+      fontWeight: '500',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+      transition: 'background 0.2s',
+    },
     '@media (max-width: 900px)': { splitGrid: { gridTemplateColumns: '1fr' } },
   };
 
@@ -96,6 +114,11 @@ const AdminDashboard = () => {
           <div style={styles.metricCard('#eab308')}><div style={styles.metricLabel}>Late Arrivals</div><div style={styles.metricValue}>{lateToday}</div></div>
           <div style={styles.metricCard('#ef4444')}><div style={styles.metricLabel}>Absent</div><div style={styles.metricValue}>{absentToday}</div></div>
         </div>
+
+        {/* Scroll Down Button */}
+        <button onClick={scrollToBottom} style={styles.scrollButton}>
+          ↓ Scroll Down to Charts & Department Data
+        </button>
 
         {/* Split screen: Left = Monthly Attendance, Right = Department % */}
         <div style={styles.splitGrid}>

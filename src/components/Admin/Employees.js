@@ -13,7 +13,6 @@ const Employees = () => {
     phone: '',
   });
 
-  // Helper to merge registered user into admin employees (preserves location)
   const getAllEmployees = () => {
     let adminEmps = getEmployees();
     const registeredUser = localStorage.getItem('registeredUser');
@@ -21,7 +20,6 @@ const Employees = () => {
       const user = JSON.parse(registeredUser);
       const existsIndex = adminEmps.findIndex(emp => emp.email === user.email);
       if (existsIndex === -1) {
-        // Add new employee with location
         const newEmp = {
           id: adminEmps.length + 1,
           name: user.name,
@@ -29,16 +27,25 @@ const Employees = () => {
           department: user.department || 'Not specified',
           position: user.position || 'Employee',
           phone: user.phone || '',
+          address: user.address || '',
+          photo: user.photo || '',        // 👈 store photo
           location: user.location || { lat: null, lng: null, address: 'Not captured' }
         };
         adminEmps.push(newEmp);
-        // Save back to storage
         localStorage.setItem('admin_employees', JSON.stringify(adminEmps));
       } else {
-        // Update existing employee if location is missing
         const existing = adminEmps[existsIndex];
-        if (!existing.location && user.location) {
-          adminEmps[existsIndex] = { ...existing, location: user.location };
+        // update missing fields
+        let updated = false;
+        if (!existing.address && user.address) {
+          existing.address = user.address;
+          updated = true;
+        }
+        if (!existing.photo && user.photo) {
+          existing.photo = user.photo;
+          updated = true;
+        }
+        if (updated) {
           localStorage.setItem('admin_employees', JSON.stringify(adminEmps));
         }
       }
@@ -98,6 +105,13 @@ const Employees = () => {
   });
   const deptBreakdown = Object.entries(deptCount).slice(0, 5);
 
+  const formatLocation = (location) => {
+    if (!location) return '—';
+    if (location.address && location.address !== 'Not captured') return location.address;
+    if (location.lat && location.lng) return `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
+    return 'Not captured';
+  };
+
   const styles = {
     container: { background: '#f8fafc', minHeight: '100vh', padding: '24px' },
     wrapper: { maxWidth: '1400px', margin: '0 auto' },
@@ -121,14 +135,7 @@ const Employees = () => {
     modalButtons: { display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' },
     cancelBtn: { background: '#6c757d', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' },
     saveBtn: { background: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer' },
-  };
-
-  // Helper to format location display
-  const formatLocation = (location) => {
-    if (!location) return '—';
-    if (location.address && location.address !== 'Not captured') return location.address;
-    if (location.lat && location.lng) return `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
-    return 'Not captured';
+    photoThumb: { width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #e2e8f0' },
   };
 
   return (
@@ -153,11 +160,13 @@ const Employees = () => {
               <table style={styles.table}>
                 <thead>
                   <tr>
+                    <th style={styles.th}>Photo</th>
                     <th style={styles.th}>Name</th>
                     <th style={styles.th}>Email</th>
                     <th style={styles.th}>Department</th>
                     <th style={styles.th}>Position</th>
                     <th style={styles.th}>Phone</th>
+                    <th style={styles.th}>Address</th>
                     <th style={styles.th}>Location</th>
                     <th style={styles.th}>Actions</th>
                   </tr>
@@ -165,11 +174,19 @@ const Employees = () => {
                 <tbody>
                   {filteredEmployees.map(emp => (
                     <tr key={emp.id}>
+                      <td style={styles.td}>
+                        {emp.photo ? (
+                          <img src={emp.photo} alt={emp.name} style={styles.photoThumb} />
+                        ) : (
+                          <span style={{ ...styles.photoThumb, display: 'inline-block', textAlign: 'center', lineHeight: '40px' }}>📷</span>
+                        )}
+                      </td>
                       <td style={styles.td}>{emp.name}</td>
                       <td style={styles.td}>{emp.email}</td>
                       <td style={styles.td}>{emp.department}</td>
                       <td style={styles.td}>{emp.position}</td>
                       <td style={styles.td}>{emp.phone}</td>
+                      <td style={styles.td}>{emp.address || '—'}</td>
                       <td style={styles.td}>{formatLocation(emp.location)}</td>
                       <td style={styles.td}>
                         <button onClick={() => handleDelete(emp.id)} style={styles.deleteBtn}>Delete</button>
@@ -178,7 +195,7 @@ const Employees = () => {
                   ))}
                   {filteredEmployees.length === 0 && (
                     <tr>
-                      <td colSpan="7" style={{ ...styles.td, textAlign: 'center' }}>No employees found</td>
+                      <td colSpan="9" style={{ ...styles.td, textAlign: 'center' }}>No employees found</td>
                     </tr>
                   )}
                 </tbody>
@@ -186,7 +203,7 @@ const Employees = () => {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Summary Card */}
+          {/* RIGHT COLUMN: Summary Card (unchanged) */}
           <div style={styles.summaryCard}>
             <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>Summary</h3>
             <div style={styles.statItem}>
@@ -210,7 +227,7 @@ const Employees = () => {
         </div>
       </div>
 
-      {/* Modal for Add Employee */}
+      {/* Modal for Add Employee (unchanged) */}
       {showModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>

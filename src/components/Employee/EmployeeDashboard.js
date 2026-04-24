@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Webcam from 'react-webcam';
+import * as faceapi from 'face-api.js';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './EmployeeDashboard.css';
 
@@ -9,6 +10,7 @@ const EmployeeDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
 
   // Leave request state
   const [leaveRequest, setLeaveRequest] = useState({
@@ -32,6 +34,44 @@ const EmployeeDashboard = () => {
   const [confirmationChecked, setConfirmationChecked] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
   const webcamRef = useRef(null);
+
+  // Load face‑api models once
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+        await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+        await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
+        setModelsLoaded(true);
+        console.log('Face models loaded');
+      } catch (err) {
+        console.error('Failed to load face models', err);
+      }
+    };
+    loadModels();
+  }, []);
+
+  // Compare captured photo with stored face descriptor
+  const compareFaces = async (capturedImageSrc, storedDescriptorKey) => {
+    if (!modelsLoaded) {
+      throw new Error('Face models not yet loaded');
+    }
+    const img = new Image();
+    img.src = capturedImageSrc;
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+    const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+    if (!detection) return false;
+    const capturedDescriptor = detection.descriptor;
+    const storedDescriptor = JSON.parse(localStorage.getItem(storedDescriptorKey));
+    if (!storedDescriptor) return false;
+    const distance = faceapi.euclideanDistance(capturedDescriptor, storedDescriptor);
+    return distance < 0.6; // threshold (adjust as needed)
+  };
 
   // Calculate present percentage for pie chart
   const totalDays = attendanceHistory.length;
@@ -106,13 +146,35 @@ const EmployeeDashboard = () => {
       setLeaveError('Please fill all fields');
       return;
     }
+
+    const currentUserData = JSON.parse(localStorage.getItem('currentUser')) || user;
+    const employeeId = currentUserData?.id || (() => {
+      const employees = JSON.parse(localStorage.getItem('admin_employees')) || [];
+      const found = employees.find(emp => emp.email === currentUserData?.email);
+      return found ? found.id : Date.now();
+    })();
+    const employeeName = currentUserData?.name || currentUserData?.email?.split('@')[0] || 'Employee';
+
+    const newRequest = {
+      id: Date.now(),
+      employeeId: employeeId,
+      employeeName: employeeName,
+      startDate: leaveRequest.startDate,
+      endDate: leaveRequest.endDate,
+      reason: leaveRequest.reason,
+      status: 'Pending'
+    };
+
+    const existing = JSON.parse(localStorage.getItem('admin_leave_requests')) || [];
+    existing.push(newRequest);
+    localStorage.setItem('admin_leave_requests', JSON.stringify(existing));
+
     setLeaveSuccess('Leave request submitted!');
     setLeaveError('');
     setLeaveRequest({ startDate: '', endDate: '', reason: '' });
     setTimeout(() => setLeaveSuccess(''), 3000);
   };
 
-  // Visual permission flow: open modal
   const handleMarkLoginClick = () => {
     setShowWebcamModal(true);
     setCapturedImage(null);
@@ -120,40 +182,58 @@ const EmployeeDashboard = () => {
     setLoginMessage('');
   };
 
-  // Capture photo from webcam
   const capturePhoto = () => {
     const imageSrc = webcamRef.current.getScreenshot();
     setCapturedImage(imageSrc);
   };
 
-  // Confirm login after visual verification
-  const confirmLogin = () => {
+  const confirmLogin = async () => {
     if (!confirmationChecked) {
       setLoginMessage('Please confirm that this is your photo.');
       return;
     }
-    // Record login time
-    const now = new Date();
-    const loginTime = now.toLocaleTimeString();
-    const todayDate = now.toISOString().split('T')[0];
-    // Add a mock attendance record for today (or update if already exists)
-    const existingIndex = attendanceHistory.findIndex(rec => rec.date === todayDate);
-    if (existingIndex === -1) {
-      setAttendanceHistory([
-        { date: todayDate, login: loginTime, logout: '-', hours: 0, status: 'Present' },
-        ...attendanceHistory
-      ]);
-    } else {
-      const updated = [...attendanceHistory];
-      updated[existingIndex].login = loginTime;
-      updated[existingIndex].status = 'Present';
-      setAttendanceHistory(updated);
+    if (!modelsLoaded) {
+      setLoginMessage('Face recognition models are still loading. Please wait and try again.');
+      return;
     }
-    setLoginMessage(`Login recorded at ${loginTime}`);
-    setTimeout(() => {
-      setShowWebcamModal(false);
-      setLoginMessage('');
-    }, 2000);
+    if (!capturedImage) {
+      setLoginMessage('Please capture your photo first.');
+      return;
+    }
+
+    try {
+      const storedKey = `faceDescriptor_${currentUser.email}`;
+      const match = await compareFaces(capturedImage, storedKey);
+      if (!match) {
+        setLoginMessage('Face does not match registered photo. Login denied.');
+        return;
+      }
+
+      // Record login time (attendance)
+      const now = new Date();
+      const loginTime = now.toLocaleTimeString();
+      const todayDate = now.toISOString().split('T')[0];
+      const existingIndex = attendanceHistory.findIndex(rec => rec.date === todayDate);
+      if (existingIndex === -1) {
+        setAttendanceHistory([
+          { date: todayDate, login: loginTime, logout: '-', hours: 0, status: 'Present' },
+          ...attendanceHistory
+        ]);
+      } else {
+        const updated = [...attendanceHistory];
+        updated[existingIndex].login = loginTime;
+        updated[existingIndex].status = 'Present';
+        setAttendanceHistory(updated);
+      }
+      setLoginMessage(`Login recorded at ${loginTime}`);
+      setTimeout(() => {
+        setShowWebcamModal(false);
+        setLoginMessage('');
+      }, 2000);
+    } catch (err) {
+      console.error(err);
+      setLoginMessage('Face verification failed. Please try again.');
+    }
   };
 
   if (!currentUser) return <div className="loading">Loading...</div>;
@@ -183,6 +263,7 @@ const EmployeeDashboard = () => {
                 <p>Email: {currentUser.email}</p>
                 <p>Department: {currentUser.department || 'Engineering'}</p>
                 <p>Position: {currentUser.position || 'Staff'}</p>
+                <p>Address: {currentUser.address || 'Not provided'}</p>
               </div>
             </div>
             <button onClick={handleMarkLoginClick} className="mark-login-btn">Mark Login</button>
@@ -193,18 +274,9 @@ const EmployeeDashboard = () => {
             {leaveError && <p className="error-message">{leaveError}</p>}
             {leaveSuccess && <p className="success-message">{leaveSuccess}</p>}
             <form onSubmit={handleLeaveSubmit}>
-              <div>
-                <label>Start Date</label>
-                <input type="date" name="startDate" value={leaveRequest.startDate} onChange={handleLeaveChange} required />
-              </div>
-              <div>
-                <label>End Date</label>
-                <input type="date" name="endDate" value={leaveRequest.endDate} onChange={handleLeaveChange} required />
-              </div>
-              <div>
-                <label>Reason</label>
-                <textarea name="reason" value={leaveRequest.reason} onChange={handleLeaveChange} required rows="2"></textarea>
-              </div>
+              <div><label>Start Date</label><input type="date" name="startDate" value={leaveRequest.startDate} onChange={handleLeaveChange} required /></div>
+              <div><label>End Date</label><input type="date" name="endDate" value={leaveRequest.endDate} onChange={handleLeaveChange} required /></div>
+              <div><label>Reason</label><textarea name="reason" value={leaveRequest.reason} onChange={handleLeaveChange} required rows="2"></textarea></div>
               <button type="submit">Submit Request</button>
             </form>
           </div>
@@ -216,23 +288,17 @@ const EmployeeDashboard = () => {
             <div className="calendar-header">
               <button onClick={handlePrevMonth} className="calendar-nav">◀</button>
               <select value={selectedMonth} onChange={handleMonthChange}>
-                {months.map((month, idx) => (
-                  <option key={idx} value={idx}>{month}</option>
-                ))}
+                {months.map((month, idx) => <option key={idx} value={idx}>{month}</option>)}
               </select>
               <select value={selectedYear} onChange={handleYearChange}>
-                {years.map(year => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
+                {years.map(year => <option key={year} value={year}>{year}</option>)}
               </select>
               <button onClick={handleNextMonth} className="calendar-nav">▶</button>
             </div>
             <div className="calendar-grid">
               {weekDays.map(day => <div key={day} className="calendar-weekday">{day}</div>)}
               {calendarDays.map((day, idx) => (
-                <div key={idx} className={`calendar-day ${day === null ? 'empty' : ''}`}>
-                  {day !== null ? day : ''}
-                </div>
+                <div key={idx} className={`calendar-day ${day === null ? 'empty' : ''}`}>{day !== null ? day : ''}</div>
               ))}
             </div>
           </div>
@@ -241,20 +307,8 @@ const EmployeeDashboard = () => {
             <h3>Present Percentage</h3>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={70}
-                  fill="#8884d8"
-                  paddingAngle={2}
-                  dataKey="value"
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="value" label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}>
+                  {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                 </Pie>
                 <Tooltip formatter={(value) => `${value.toFixed(1)}%`} />
                 <Legend />
@@ -268,11 +322,7 @@ const EmployeeDashboard = () => {
           <div className="card attendance-history">
             <h3>Attendance History</h3>
             <table className="attendance-table">
-              <thead>
-                <tr>
-                  <th>Date</th><th>Login</th><th>Logout</th><th>Hours</th><th>Status</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Date</th><th>Login</th><th>Logout</th><th>Hours</th><th>Status</th></tr></thead>
               <tbody>
                 {attendanceHistory.map((record, idx) => (
                   <tr key={idx}>
@@ -289,7 +339,7 @@ const EmployeeDashboard = () => {
         </div>
       </div>
 
-      {/* Webcam Modal for Visual Permission */}
+      {/* Webcam Modal with Face Verification */}
       {showWebcamModal && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -311,11 +361,7 @@ const EmployeeDashboard = () => {
               <div>
                 <img src={capturedImage} alt="Captured" style={{ width: '160px', borderRadius: '8px', marginTop: '10px' }} />
                 <label style={{ display: 'block', marginTop: '10px' }}>
-                  <input
-                    type="checkbox"
-                    checked={confirmationChecked}
-                    onChange={(e) => setConfirmationChecked(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={confirmationChecked} onChange={(e) => setConfirmationChecked(e.target.checked)} />
                   This is me – I confirm my identity.
                 </label>
                 <button onClick={confirmLogin} className="confirm-login-btn">Confirm Login</button>
@@ -323,6 +369,7 @@ const EmployeeDashboard = () => {
             )}
             <button onClick={() => setShowWebcamModal(false)} className="close-modal-btn">Close</button>
             {loginMessage && <p className="login-message">{loginMessage}</p>}
+            {!modelsLoaded && <p style={{ marginTop: '10px', fontSize: '12px', color: 'orange' }}>Loading face recognition models...</p>}
           </div>
         </div>
       )}

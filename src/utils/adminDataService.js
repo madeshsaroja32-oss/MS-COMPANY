@@ -118,7 +118,38 @@ export const getDepartments = () => JSON.parse(localStorage.getItem(STORAGE_KEYS
 export const getLeaveTypes = () => JSON.parse(localStorage.getItem(STORAGE_KEYS.LEAVE_TYPES)) || [];
 
 // Leave Requests
-export const getLeaveRequests = () => JSON.parse(localStorage.getItem(STORAGE_KEYS.LEAVE_REQUESTS)) || [];
+export const getLeaveRequests = () => {
+  const requests = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEAVE_REQUESTS)) || [];
+  // Enrich with real employee names from the company list
+  const employees = getEmployees();
+  const registeredUser = localStorage.getItem('registeredUser');
+  const allEmployees = [...employees];
+  if (registeredUser) {
+    const user = JSON.parse(registeredUser);
+    if (!allEmployees.some(e => e.email === user.email)) {
+      allEmployees.push({
+        id: allEmployees.length + 1,
+        name: user.name,
+        email: user.email,
+        department: user.department || 'Not specified'
+      });
+    }
+  }
+  const enriched = requests.map(req => {
+    let empName = req.employeeName;
+    // If employeeId exists and matches an employee, use official name
+    if (req.employeeId) {
+      const emp = allEmployees.find(e => e.id === req.employeeId);
+      if (emp) empName = emp.name;
+    } else {
+      // Try to match by name or email
+      const emp = allEmployees.find(e => e.name === req.employeeName || e.email === req.employeeName);
+      if (emp) empName = emp.name;
+    }
+    return { ...req, employeeName: empName };
+  });
+  return enriched;
+};
 export const addLeaveRequest = (request) => {
   const requests = getLeaveRequests();
   const newId = Math.max(...requests.map(r => r.id), 0) + 1;
@@ -271,7 +302,6 @@ export const getRealEmployees = () => {
       adminEmployees.push(newEmployee);
       localStorage.setItem(STORAGE_KEYS.EMPLOYEES, JSON.stringify(adminEmployees));
     } else {
-      // Update existing employee with location if missing
       let updated = false;
       const updatedEmployees = adminEmployees.map(emp => {
         if (emp.email === user.email && !emp.location) {
