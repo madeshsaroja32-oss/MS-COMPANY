@@ -58,7 +58,7 @@ const AdminDashboard = () => {
 
   const styles = {
     container: { background: '#f8fafc', minHeight: '100vh', padding: '24px' },
-    wrapper: { maxWidth: '1400px', margin: '0 auto' },
+    wrapper: { maxWidth: '1180px', margin: '0 auto' },
     header: { marginBottom: '32px' },
     title: { fontSize: '28px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' },
     subtitle: { color: '#475569' },

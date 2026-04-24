@@ -15,8 +15,8 @@ const Analytics = () => {
   const [filterStatus, setFilterStatus] = useState('all');
 
   const loadAnalytics = useCallback(() => {
-    const records = (typeof getAttendanceRecords === 'function' && getAttendanceRecords()) || [];
-    const employees = (typeof getEmployees === 'function' && getEmployees()) || [];
+    const records = getAttendanceRecords() || [];
+    const employees = getEmployees() || [];
 
     // Attendance trends (last 15 days)
     const last15Days = [];
@@ -72,7 +72,7 @@ const Analytics = () => {
     setLateFrequency(freqArray);
 
     // Leave requests enriched with employee photo
-    const allLeaveRequests = (typeof getLeaveRequests === 'function' && getLeaveRequests()) || [];
+    const allLeaveRequests = getLeaveRequests() || [];
     const enriched = allLeaveRequests.map(req => {
       const emp = employees.find(e => e.id === req.employeeId || e.name === req.employeeName);
       return { ...req, photo: emp?.photo || null };
@@ -82,14 +82,11 @@ const Analytics = () => {
 
   useEffect(() => {
     loadAnalytics();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadAnalytics]);
 
   const handleUpdateStatus = (id, status) => {
-    if (typeof updateLeaveRequestStatus === 'function') {
-      updateLeaveRequestStatus(id, status);
-      loadAnalytics();
-    }
+    updateLeaveRequestStatus(id, status);
+    loadAnalytics();
   };
 
   const filteredLeaveRequests = leaveRequests.filter(req =>
@@ -98,7 +95,7 @@ const Analytics = () => {
 
   const styles = {
     container: { background: '#f8fafc', minHeight: '100vh', padding: '24px' },
-    wrapper: { maxWidth: '1400px', margin: '0 auto' },
+    wrapper: { maxWidth: '1180px', margin: '0 auto' },
     splitGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'start' },
     card: { background: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', marginBottom: '24px', height: '100%' },
     cardTitle: { fontSize: '18px', fontWeight: '600', marginBottom: '16px', color: '#1e293b' },
@@ -107,7 +104,7 @@ const Analytics = () => {
     progressBar: { background: '#e2e8f0', borderRadius: '10px', height: '8px', overflow: 'hidden' },
     progressFill: (percent) => ({ width: `${percent}%`, background: '#3b82f6', height: '100%' }),
     scrollWrapper: { overflowX: 'auto', width: '100%' },
-    chartInner: { minWidth: '600px' },
+    chartInner: { minWidth: '550px' },
     tableWrapper: { overflowX: 'auto' },
     table: { width: '100%', borderCollapse: 'collapse', border: '1px solid #e2e8f0', borderRadius: '12px' },
     th: { padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' },
@@ -129,8 +126,9 @@ const Analytics = () => {
   return (
     <div style={styles.container}>
       <div style={styles.wrapper}>
-        {/* Split screen */}
+        {/* Split screen: Left = Attendance Trends, Right = Department Performance + Late Frequency */}
         <div style={styles.splitGrid}>
+          {/* LEFT COLUMN */}
           <div>
             <div style={styles.card}>
               <h3 style={styles.cardTitle}>Attendance Trends (Last 15 days)</h3>
@@ -151,6 +149,8 @@ const Analytics = () => {
               </div>
             </div>
           </div>
+
+          {/* RIGHT COLUMN */}
           <div>
             <div style={styles.card}>
               <h3 style={styles.cardTitle}>Department Performance</h3>
@@ -166,6 +166,7 @@ const Analytics = () => {
                 </div>
               )) : <p>No department attendance data available.</p>}
             </div>
+
             <div style={styles.card}>
               <h3 style={styles.cardTitle}>Late Login Frequency (hours late)</h3>
               <div style={styles.scrollWrapper}>
@@ -187,7 +188,7 @@ const Analytics = () => {
           </div>
         </div>
 
-        {/* Leave Requests Table with Photo */}
+        {/* Leave Requests Table – full width */}
         <div style={styles.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap' }}>
             <h3 style={styles.cardTitle}>Leave Requests</h3>

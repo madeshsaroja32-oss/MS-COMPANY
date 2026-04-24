@@ -114,7 +114,7 @@ const Employees = () => {
 
   const styles = {
     container: { background: '#f8fafc', minHeight: '100vh', padding: '24px' },
-    wrapper: { maxWidth: '1400px', margin: '0 auto' },
+    wrapper: { maxWidth: '1180px', margin: '0 auto' },
     splitGrid: { display: 'grid', gridTemplateColumns: '1fr 350px', gap: '24px' },
     tableCard: { background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' },
     summaryCard: { background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', height: 'fit-content' },
@@ -123,7 +123,7 @@ const Employees = () => {
     search: { padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', width: '100%', maxWidth: '300px', marginBottom: '20px', fontSize: '14px' },
     addBtn: { background: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', marginLeft: 'auto' },
     tableWrapper: { overflowX: 'auto' },
-    table: { width: '100%', borderCollapse: 'collapse', border: '1px solid #e2e8f0', borderRadius: '12px' },
+    table: { width: '80%', borderCollapse: 'collapse', border: '1px solid #e2e8f0', borderRadius: '12px' },
     th: { padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' },
     td: { padding: '12px 16px', fontSize: '14px', borderBottom: '1px solid #e2e8f0' },
     deleteBtn: { background: '#ef4444', color: 'white', border: 'none', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' },
