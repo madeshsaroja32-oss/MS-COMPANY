@@ -9,10 +9,27 @@ const Attendance = () => {
   const [todayStats, setTodayStats] = useState({ present: 0, late: 0, absent: 0 });
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-
   const [chartYear, setChartYear] = useState(new Date().getFullYear());
   const [chartMonth, setChartMonth] = useState(new Date().getMonth());
   const [chartData, setChartData] = useState([]);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+
+  // Scroll event listener to show/hide button
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowScrollButton(true);
+      } else {
+        setShowScrollButton(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const getAllEmployees = () => {
     const adminEmps = getEmployees();
@@ -206,10 +223,34 @@ const Attendance = () => {
       borderRadius: '8px',
       cursor: 'pointer',
     },
+    scrollButton: {
+      position: 'fixed',
+      bottom: '30px',
+      right: '30px',
+      background: '#3b82f6',
+      color: 'white',
+      width: '50px',
+      height: '50px',
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      cursor: 'pointer',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+      border: 'none',
+      fontSize: '24px',
+      zIndex: 100,
+      transition: 'opacity 0.3s',
+    },
   };
 
   return (
     <div style={styles.container}>
+      {showScrollButton && (
+        <button style={styles.scrollButton} onClick={scrollToTop} title="Scroll to top">
+          ↑
+        </button>
+      )}
       <div style={styles.wrapper}>
         <div style={styles.splitGrid}>
           {/* LEFT COLUMN: Attendance Table */}
@@ -248,41 +289,41 @@ const Attendance = () => {
                     <th style={styles.th}>Login Location</th>
                     <th style={styles.th}>Status</th>
                 </tr>
-                </thead>
-                <tbody>
-                  {filteredRecords.map(rec => (
-                    <tr key={rec.id}>
-                      <td style={styles.td}>
-                        {rec.photo ? (
-                          <img
-                            src={rec.photo}
-                            alt="attendance"
-                            style={styles.photoThumb}
-                            onClick={() => openPhotoModal(rec.photo)}
-                            title="Click to enlarge"
-                          />
-                        ) : (
-                          <span style={{ ...styles.photoThumb, display: 'inline-block', textAlign: 'center', lineHeight: '40px', cursor: 'default' }}>📷</span>
-                        )}
-                      </td>
-                      <td style={styles.td}>{rec.employeeName}</td>
-                      <td style={styles.td}>{rec.department}</td>
-                      <td style={styles.td}>{rec.employeeAddress || '—'}</td>
-                      <td style={styles.td}>{rec.date}</td>
-                      <td style={styles.td}>{rec.loginTime || '—'}</td>
-                      <td style={styles.td}>{rec.logoutTime || '—'}</td>
-                      <td style={styles.td}>{rec.hours ? `${rec.hours}h` : '—'}</td>
-                      <td style={styles.td}>{rec.location || 'N/A'}</td>
-                      <td style={styles.td}><span style={styles.badge(rec.status)}>{rec.status}</span></td>
-                    </tr>
-                  ))}
-                  {filteredRecords.length === 0 && (
-                    <tr>
-                      <td colSpan="10" style={{ ...styles.td, textAlign: 'center' }}>No attendance records found</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              </thead>
+              <tbody>
+                {filteredRecords.map(rec => (
+                  <tr key={rec.id}>
+                    <td style={styles.td}>
+                      {rec.photo ? (
+                        <img
+                          src={rec.photo}
+                          alt="attendance"
+                          style={styles.photoThumb}
+                          onClick={() => openPhotoModal(rec.photo)}
+                          title="Click to enlarge"
+                        />
+                      ) : (
+                        <span style={{ ...styles.photoThumb, display: 'inline-block', textAlign: 'center', lineHeight: '40px', cursor: 'default' }}>📷</span>
+                      )}
+                    </td>
+                    <td style={styles.td}>{rec.employeeName}</td>
+                    <td style={styles.td}>{rec.department}</td>
+                    <td style={styles.td}>{rec.employeeAddress || '—'}</td>
+                    <td style={styles.td}>{rec.date}</td>
+                    <td style={styles.td}>{rec.loginTime || '—'}</td>
+                    <td style={styles.td}>{rec.logoutTime || '—'}</td>
+                    <td style={styles.td}>{rec.hours ? `${rec.hours}h` : '—'}</td>
+                    <td style={styles.td}>{rec.location || 'N/A'}</td>
+                    <td style={styles.td}><span style={styles.badge(rec.status)}>{rec.status}</span></td>
+                  </tr>
+                ))}
+                {filteredRecords.length === 0 && (
+                  <tr>
+                    <td colSpan="10" style={{ ...styles.td, textAlign: 'center' }}>No attendance records found</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
             </div>
           </div>
 
