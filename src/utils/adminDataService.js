@@ -168,6 +168,15 @@ export const updateLeaveRequestStatus = (id, status) => {
 // Attendance Records
 export const getAttendanceRecords = () => JSON.parse(localStorage.getItem(STORAGE_KEYS.ATTENDANCE_RECORDS)) || [];
 
+// 👇 ADD THIS NEW FUNCTION
+export const addAttendanceRecord = (record) => {
+  const records = getAttendanceRecords();
+  const newId = Math.max(...records.map(r => r.id), 0) + 1;
+  record.id = newId;
+  records.push(record);
+  localStorage.setItem(STORAGE_KEYS.ATTENDANCE_RECORDS, JSON.stringify(records));
+};
+
 // Dashboard stats
 export const getDashboardStats = () => {
   const employees = getEmployees();

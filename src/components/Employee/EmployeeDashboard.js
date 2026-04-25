@@ -2,15 +2,14 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Webcam from 'react-webcam';
-import * as faceapi from 'face-api.js';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { addAttendanceRecord, getAttendanceRecords, getEmployees } from '../../utils/adminDataService';
 import './EmployeeDashboard.css';
 
 const EmployeeDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
-  const [modelsLoaded, setModelsLoaded] = useState(false);
 
   // Leave request state
   const [leaveRequest, setLeaveRequest] = useState({
@@ -21,12 +20,8 @@ const EmployeeDashboard = () => {
   const [leaveError, setLeaveError] = useState('');
   const [leaveSuccess, setLeaveSuccess] = useState('');
 
-  // Attendance history (mock)
-  const [attendanceHistory, setAttendanceHistory] = useState([
-    { date: '2024-04-01', login: '09:00 AM', logout: '05:00 PM', hours: 8, status: 'Present' },
-    { date: '2024-04-02', login: '09:15 AM', logout: '05:00 PM', hours: 7.75, status: 'Late' },
-    { date: '2024-04-03', login: '09:00 AM', logout: '05:00 PM', hours: 8, status: 'Present' },
-  ]);
+  // Attendance history (loaded from localStorage)
+  const [attendanceHistory, setAttendanceHistory] = useState([]);
 
   // Webcam modal state
   const [showWebcamModal, setShowWebcamModal] = useState(false);
@@ -35,43 +30,21 @@ const EmployeeDashboard = () => {
   const [loginMessage, setLoginMessage] = useState('');
   const webcamRef = useRef(null);
 
-  // Load face‑api models once
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-        await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
-        await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
-        setModelsLoaded(true);
-        console.log('Face models loaded');
-      } catch (err) {
-        console.error('Failed to load face models', err);
-      }
-    };
-    loadModels();
-  }, []);
-
-  // Compare captured photo with stored face descriptor
-  const compareFaces = async (capturedImageSrc, storedDescriptorKey) => {
-    if (!modelsLoaded) {
-      throw new Error('Face models not yet loaded');
-    }
-    const img = new Image();
-    img.src = capturedImageSrc;
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
+  // Load attendance history from localStorage on mount
+  const loadAttendanceHistory = () => {
+    const records = getAttendanceRecords();
+    const employees = getEmployees();
+    const enriched = records.map(rec => {
+      const emp = employees.find(e => e.id === rec.employeeId);
+      return { ...rec, employeeName: emp?.name || 'Unknown', department: emp?.department || 'Unknown' };
     });
-    const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks()
-      .withFaceDescriptor();
-    if (!detection) return false;
-    const capturedDescriptor = detection.descriptor;
-    const storedDescriptor = JSON.parse(localStorage.getItem(storedDescriptorKey));
-    if (!storedDescriptor) return false;
-    const distance = faceapi.euclideanDistance(capturedDescriptor, storedDescriptor);
-    return distance < 0.6;
+    enriched.sort((a, b) => new Date(b.date) - new Date(a.date));
+    setAttendanceHistory(enriched);
   };
+
+  useEffect(() => {
+    loadAttendanceHistory();
+  }, []);
 
   // Calculate present percentage for pie chart
   const totalDays = attendanceHistory.length;
@@ -84,7 +57,7 @@ const EmployeeDashboard = () => {
     { name: 'Absent/Late', value: absentPercentage, color: '#ff9800' },
   ];
 
-  // Calendar state
+  // Calendar state (unchanged)
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
@@ -187,13 +160,9 @@ const EmployeeDashboard = () => {
     setCapturedImage(imageSrc);
   };
 
-  const confirmLogin = async () => {
+  const confirmLogin = () => {
     if (!confirmationChecked) {
       setLoginMessage('Please confirm that this is your photo.');
-      return;
-    }
-    if (!modelsLoaded) {
-      setLoginMessage('Face recognition models are still loading. Please wait and try again.');
       return;
     }
     if (!capturedImage) {
@@ -201,39 +170,31 @@ const EmployeeDashboard = () => {
       return;
     }
 
-    try {
-      const storedKey = `faceDescriptor_${currentUser.email}`;
-      const match = await compareFaces(capturedImage, storedKey);
-      if (!match) {
-        setLoginMessage('Face does not match registered photo. Login denied.');
-        return;
-      }
-
-      // Record login time (attendance)
-      const now = new Date();
-      const loginTime = now.toLocaleTimeString();
-      const todayDate = now.toISOString().split('T')[0];
-      const existingIndex = attendanceHistory.findIndex(rec => rec.date === todayDate);
-      if (existingIndex === -1) {
-        setAttendanceHistory([
-          { date: todayDate, login: loginTime, logout: '-', hours: 0, status: 'Present' },
-          ...attendanceHistory
-        ]);
-      } else {
-        const updated = [...attendanceHistory];
-        updated[existingIndex].login = loginTime;
-        updated[existingIndex].status = 'Present';
-        setAttendanceHistory(updated);
-      }
-      setLoginMessage(`Login recorded at ${loginTime}`);
-      setTimeout(() => {
-        setShowWebcamModal(false);
-        setLoginMessage('');
-      }, 2000);
-    } catch (err) {
-      console.error(err);
-      setLoginMessage('Face verification failed. Please try again.');
-    }
+    // Save attendance record with photo
+    const now = new Date();
+    const loginTime = now.toLocaleTimeString();
+    const todayDate = now.toISOString().split('T')[0];
+    const newRecord = {
+      employeeId: currentUser.id,
+      employeeName: currentUser.name,
+      date: todayDate,
+      loginTime,
+      logoutTime: null,
+      hours: null,
+      status: 'Present',
+      location: currentUser.location?.address || 'From webcam',
+      photo: capturedImage,   // base64 image
+    };
+    addAttendanceRecord(newRecord);
+    
+    // Refresh attendance history
+    loadAttendanceHistory();
+    
+    setLoginMessage(`Login recorded at ${loginTime}`);
+    setTimeout(() => {
+      setShowWebcamModal(false);
+      setLoginMessage('');
+    }, 2000);
   };
 
   if (!currentUser) return <div className="loading">Loading...</div>;
@@ -335,8 +296,8 @@ const EmployeeDashboard = () => {
                 {attendanceHistory.map((record, idx) => (
                   <tr key={idx}>
                     <td>{record.date}</td>
-                    <td>{record.login || '-'}</td>
-                    <td>{record.logout || '-'}</td>
+                    <td>{record.loginTime || '-'}</td>
+                    <td>{record.logoutTime || '-'}</td>
                     <td>{record.hours || '-'}</td>
                     <td>{record.status}</td>
                   </tr>
@@ -347,7 +308,7 @@ const EmployeeDashboard = () => {
         </div>
       </div>
 
-      {/* Webcam Modal with Face Verification */}
+      {/* Webcam Modal with manual confirmation only */}
       {showWebcamModal && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -377,7 +338,6 @@ const EmployeeDashboard = () => {
             )}
             <button onClick={() => setShowWebcamModal(false)} className="close-modal-btn">Close</button>
             {loginMessage && <p className="login-message">{loginMessage}</p>}
-            {!modelsLoaded && <p style={{ marginTop: '10px', fontSize: '12px', color: 'orange' }}>Loading face recognition models...</p>}
           </div>
         </div>
       )}

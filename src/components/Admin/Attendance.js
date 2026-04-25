@@ -7,13 +7,13 @@ const Attendance = () => {
   const [search, setSearch] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [todayStats, setTodayStats] = useState({ present: 0, late: 0, absent: 0 });
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  // Chart state
   const [chartYear, setChartYear] = useState(new Date().getFullYear());
   const [chartMonth, setChartMonth] = useState(new Date().getMonth());
   const [chartData, setChartData] = useState([]);
 
-  // Helper to get all employees (including registered user)
   const getAllEmployees = () => {
     const adminEmps = getEmployees();
     const registeredUser = localStorage.getItem('registeredUser');
@@ -28,14 +28,27 @@ const Attendance = () => {
           department: user.department || 'Not specified',
           position: user.position || 'Employee',
           phone: user.phone || '',
+          address: user.address || 'Not provided',
+          location: user.location || { lat: null, lng: null, address: 'Not captured' }
         };
         return [...adminEmps, newEmp];
+      } else {
+        const updated = adminEmps.map(emp => {
+          if (emp.email === user.email && (!emp.address || !emp.location)) {
+            return {
+              ...emp,
+              address: emp.address || user.address,
+              location: emp.location || user.location
+            };
+          }
+          return emp;
+        });
+        return updated;
       }
     }
     return adminEmps;
   };
 
-  // Load attendance records and compute today's stats + chart data for selected month/year
   const loadAttendance = () => {
     const records = getAttendanceRecords();
     const employees = getAllEmployees();
@@ -45,12 +58,12 @@ const Attendance = () => {
         ...rec,
         employeeName: emp ? emp.name : 'Unknown',
         department: emp ? emp.department : 'Unknown',
+        employeeAddress: emp ? (emp.address || 'Not provided') : 'Unknown',
       };
     });
     enriched.sort((a, b) => new Date(b.date) - new Date(a.date));
     setAttendanceRecords(enriched);
 
-    // Today's stats
     const today = new Date().toISOString().split('T')[0];
     const todayRecords = enriched.filter(r => r.date === today);
     setTodayStats({
@@ -59,7 +72,6 @@ const Attendance = () => {
       absent: todayRecords.filter(r => r.status === 'Absent').length,
     });
 
-    // Chart data for selected month/year
     updateChartData(enriched);
   };
 
@@ -88,7 +100,6 @@ const Attendance = () => {
   }, []);
 
   useEffect(() => {
-    // When chart year/month changes, recompute chart data from current attendanceRecords
     const employees = getAllEmployees();
     const enriched = attendanceRecords.length ? attendanceRecords : (() => {
       const records = getAttendanceRecords();
@@ -98,6 +109,7 @@ const Attendance = () => {
           ...rec,
           employeeName: emp ? emp.name : 'Unknown',
           department: emp ? emp.department : 'Unknown',
+          employeeAddress: emp ? (emp.address || 'Not provided') : 'Unknown',
         };
       });
     })();
@@ -106,12 +118,24 @@ const Attendance = () => {
   }, [chartYear, chartMonth]);
 
   const filteredRecords = attendanceRecords.filter(rec => {
-    const matchesSearch = rec.employeeName.toLowerCase().includes(search.toLowerCase()) ||
-      rec.department.toLowerCase().includes(search.toLowerCase()) ||
-      rec.status.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = (rec.employeeName?.toLowerCase().includes(search.toLowerCase()) || false) ||
+      (rec.department?.toLowerCase().includes(search.toLowerCase()) || false) ||
+      (rec.status?.toLowerCase().includes(search.toLowerCase()) || false);
     const matchesDate = filterDate ? rec.date === filterDate : true;
     return matchesSearch && matchesDate;
   });
+
+  const openPhotoModal = (photo) => {
+    if (photo) {
+      setSelectedPhoto(photo);
+      setModalOpen(true);
+    }
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setSelectedPhoto(null);
+  };
 
   const currentYear = new Date().getFullYear();
   const years = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
@@ -119,7 +143,7 @@ const Attendance = () => {
 
   const styles = {
     container: { background: '#f8fafc', minHeight: '100vh', padding: '24px' },
-    wrapper: { maxWidth: '1400px', margin: '0 auto' },
+    wrapper: { maxWidth: '1180px', margin: '0 auto' },
     splitGrid: { display: 'grid', gridTemplateColumns: '1fr 350px', gap: '24px' },
     tableCard: { background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0' },
     summaryCard: { background: 'white', borderRadius: '16px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', height: 'fit-content' },
@@ -140,6 +164,7 @@ const Attendance = () => {
       color: status === 'Present' ? '#166534' : status === 'Late' ? '#854d0e' : '#991b1b',
       display: 'inline-block'
     }),
+    photoThumb: { width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #e2e8f0', cursor: 'pointer' },
     statItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #e2e8f0' },
     statValue: { fontSize: '24px', fontWeight: '700' },
     statLabel: { fontSize: '14px', fontWeight: '500', color: '#475569' },
@@ -147,6 +172,40 @@ const Attendance = () => {
     chartTitle: { fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#1e293b' },
     chartControls: { display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center' },
     select: { padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' },
+    modalOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      background: 'rgba(0,0,0,0.8)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+    },
+    modalContent: {
+      background: 'white',
+      borderRadius: '12px',
+      padding: '20px',
+      maxWidth: '90%',
+      maxHeight: '90%',
+      overflow: 'auto',
+    },
+    modalImage: {
+      maxWidth: '100%',
+      maxHeight: '80vh',
+      borderRadius: '8px',
+    },
+    closeBtn: {
+      marginTop: '12px',
+      padding: '8px 16px',
+      background: '#ef4444',
+      color: 'white',
+      border: 'none',
+      borderRadius: '8px',
+      cursor: 'pointer',
+    },
   };
 
   return (
@@ -178,21 +237,37 @@ const Attendance = () => {
               <table style={styles.table}>
                 <thead>
                   <tr>
+                    <th style={styles.th}>Photo</th>
                     <th style={styles.th}>Employee</th>
                     <th style={styles.th}>Department</th>
+                    <th style={styles.th}>Employee Address</th>
                     <th style={styles.th}>Date</th>
-                    <th style={styles.th}>Login</th>
-                    <th style={styles.th}>Logout</th>
+                    <th style={styles.th}>Login Time</th>
+                    <th style={styles.th}>Logout Time</th>
                     <th style={styles.th}>Hours</th>
-                    <th style={styles.th}>Location</th>
+                    <th style={styles.th}>Login Location</th>
                     <th style={styles.th}>Status</th>
-                  </tr>
+                </tr>
                 </thead>
                 <tbody>
                   {filteredRecords.map(rec => (
                     <tr key={rec.id}>
+                      <td style={styles.td}>
+                        {rec.photo ? (
+                          <img
+                            src={rec.photo}
+                            alt="attendance"
+                            style={styles.photoThumb}
+                            onClick={() => openPhotoModal(rec.photo)}
+                            title="Click to enlarge"
+                          />
+                        ) : (
+                          <span style={{ ...styles.photoThumb, display: 'inline-block', textAlign: 'center', lineHeight: '40px', cursor: 'default' }}>📷</span>
+                        )}
+                      </td>
                       <td style={styles.td}>{rec.employeeName}</td>
                       <td style={styles.td}>{rec.department}</td>
+                      <td style={styles.td}>{rec.employeeAddress || '—'}</td>
                       <td style={styles.td}>{rec.date}</td>
                       <td style={styles.td}>{rec.loginTime || '—'}</td>
                       <td style={styles.td}>{rec.logoutTime || '—'}</td>
@@ -203,7 +278,7 @@ const Attendance = () => {
                   ))}
                   {filteredRecords.length === 0 && (
                     <tr>
-                      <td colSpan="8" style={{ ...styles.td, textAlign: 'center' }}>No attendance records found</td>
+                      <td colSpan="10" style={{ ...styles.td, textAlign: 'center' }}>No attendance records found</td>
                     </tr>
                   )}
                 </tbody>
@@ -211,7 +286,7 @@ const Attendance = () => {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Today's Summary + Chart */}
+          {/* RIGHT COLUMN: Today's Summary + Monthly Chart */}
           <div style={styles.summaryCard}>
             <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>Today's Summary</h3>
             <div style={styles.statItem}>
@@ -227,7 +302,6 @@ const Attendance = () => {
               <span style={{ ...styles.statValue, color: '#991b1b' }}>{todayStats.absent}</span>
             </div>
 
-            {/* Chart with month/year selector */}
             <div style={styles.chartContainer}>
               <h3 style={styles.chartTitle}>Monthly Attendance</h3>
               <div style={styles.chartControls}>
@@ -272,6 +346,18 @@ const Attendance = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal for enlarged photo */}
+      {modalOpen && (
+        <div style={styles.modalOverlay} onClick={closeModal}>
+          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <img src={selectedPhoto} alt="Captured attendance" style={styles.modalImage} />
+            <div style={{ textAlign: 'center', marginTop: '12px' }}>
+              <button onClick={closeModal} style={styles.closeBtn}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

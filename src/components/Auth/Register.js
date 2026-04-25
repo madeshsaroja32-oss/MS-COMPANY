@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import * as faceapi from 'face-api.js';
 import '../../index.css';
 
 const Register = () => {
@@ -21,31 +20,8 @@ const Register = () => {
   const [photo, setPhoto] = useState('');
   const [location, setLocation] = useState(null);
   const [locationStatus, setLocationStatus] = useState('prompt');
-  const [faceRegistered, setFaceRegistered] = useState(false);
-  const [faceError, setFaceError] = useState('');
-  const [modelsLoaded, setModelsLoaded] = useState(false);
   const navigate = useNavigate();
   const { register } = useAuth();
-
-  // Load face-api models once when component mounts (CDN Workaround)
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        console.log('Loading models from CDN...');
-        await faceapi.nets.tinyFaceDetector.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/tiny_face_detector_model-weights_manifest.json');
-        console.log('TinyFaceDetector loaded');
-        await faceapi.nets.faceLandmark68Net.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/face_landmark_68_model-weights_manifest.json');
-        console.log('FaceLandmark68Net loaded');
-        await faceapi.nets.faceRecognitionNet.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/face_recognition_model-weights_manifest.json');
-        console.log('FaceRecognitionNet loaded');
-        setModelsLoaded(true);
-      } catch (err) {
-        console.error('Failed to load face models', err);
-        setFaceError('Face recognition models could not be loaded. Registration will continue without face verification.');
-      }
-    };
-    loadModels();
-  }, []);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -72,50 +48,13 @@ const Register = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handlePhotoUpload = async (e) => {
+  const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
-
-    setFaceRegistered(false);
-    setFaceError('');
-
-    // Preview photo
-    const reader = new FileReader();
-    reader.onloadend = () => setPhoto(reader.result);
-    reader.readAsDataURL(file);
-
-    if (!modelsLoaded) {
-      setFaceError('Face models not yet loaded. Please wait and try again.');
-      return;
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setPhoto(reader.result);
+      reader.readAsDataURL(file);
     }
-
-    // Create an image element for face detection
-    const img = new Image();
-    img.src = URL.createObjectURL(file);
-    img.onload = async () => {
-      try {
-        const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
-          .withFaceLandmarks()
-          .withFaceDescriptor();
-        if (detection) {
-          const descriptor = Array.from(detection.descriptor);
-          localStorage.setItem(`faceDescriptor_${formData.email}`, JSON.stringify(descriptor));
-          setFaceRegistered(true);
-          setFaceError('');
-        } else {
-          setFaceError('No face detected in the uploaded photo. Please upload a clear photo showing your face.');
-        }
-      } catch (err) {
-        console.error('Face detection error:', err);
-        setFaceError('Face detection failed. Please try another photo.');
-      } finally {
-        URL.revokeObjectURL(img.src);
-      }
-    };
-    img.onerror = () => {
-      setFaceError('Failed to load image for face detection.');
-      URL.revokeObjectURL(img.src);
-    };
   };
 
   const handleSubmit = (e) => {
@@ -192,24 +131,11 @@ const Register = () => {
               <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: 'absolute', right: '10px', top: '35px', background: 'none', border: 'none' }}>{showConfirmPassword ? '🙈' : '👁️'}</button>
             </div>
             <div><label>Phone</label><input type="text" name="phone" value={formData.phone} onChange={handleChange} placeholder="e.g., +91 9876543210" /></div>
-            <div>
-              <label>Address</label>
-              <textarea
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                placeholder="Street, City, State, ZIP Code"
-                rows="3"
-                style={addressStyles}
-              />
-            </div>
+            <div><label>Address</label><textarea name="address" value={formData.address} onChange={handleChange} placeholder="Street, City, State, ZIP Code" rows="3" style={addressStyles} /></div>
             <div><label>Department</label><select name="department" value={formData.department} onChange={handleChange} required>{departments.map((d,i) => <option key={i} value={d === 'Select department' ? '' : d}>{d}</option>)}</select></div>
             <div><label>Position</label><select name="position" value={formData.position} onChange={handleChange} required>{positions.map((p,i) => <option key={i} value={p === 'Select position' ? '' : p}>{p}</option>)}</select></div>
             <div><label>Profile Photo (optional)</label><input type="file" accept="image/*" onChange={handlePhotoUpload} /></div>
             {photo && <img src={photo} alt="preview" style={{ width: '100px', borderRadius: '50%' }} />}
-            {faceRegistered && <p style={{ color: 'green' }}>✓ Face registration successful</p>}
-            {faceError && <p style={{ color: 'red' }}>{faceError}</p>}
-            {!modelsLoaded && <p style={{ color: 'orange' }}>Loading face recognition models...</p>}
             <button type="submit">Register</button>
           </form>
           <p>Already have an account? <a href="/login">Login</a></p>
