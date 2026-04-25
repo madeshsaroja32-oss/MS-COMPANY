@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import * as faceapi from 'face-api.js';
 import '../../index.css';
 
 const Register = () => {
@@ -26,15 +27,18 @@ const Register = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
 
-  // Load face-api models once when component mounts
+  // Load face-api models once when component mounts (CDN Workaround)
   useEffect(() => {
     const loadModels = async () => {
       try {
-        await window.faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-        await window.faceapi.nets.faceLandmark68Net.loadFromUri('/models');
-        await window.faceapi.nets.faceRecognitionNet.loadFromUri('/models');
+        console.log('Loading models from CDN...');
+        await faceapi.nets.tinyFaceDetector.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/tiny_face_detector_model-weights_manifest.json');
+        console.log('TinyFaceDetector loaded');
+        await faceapi.nets.faceLandmark68Net.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/face_landmark_68_model-weights_manifest.json');
+        console.log('FaceLandmark68Net loaded');
+        await faceapi.nets.faceRecognitionNet.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/face_recognition_model-weights_manifest.json');
+        console.log('FaceRecognitionNet loaded');
         setModelsLoaded(true);
-        console.log('Face models loaded');
       } catch (err) {
         console.error('Failed to load face models', err);
         setFaceError('Face recognition models could not be loaded. Registration will continue without face verification.');
@@ -90,7 +94,7 @@ const Register = () => {
     img.src = URL.createObjectURL(file);
     img.onload = async () => {
       try {
-        const detection = await window.faceapi.detectSingleFace(img, new window.faceapi.TinyFaceDetectorOptions())
+        const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
           .withFaceLandmarks()
           .withFaceDescriptor();
         if (detection) {

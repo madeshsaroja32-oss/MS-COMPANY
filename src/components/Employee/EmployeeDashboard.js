@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Webcam from 'react-webcam';
+import * as faceapi from 'face-api.js';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './EmployeeDashboard.css';
 
@@ -38,9 +39,9 @@ const EmployeeDashboard = () => {
   useEffect(() => {
     const loadModels = async () => {
       try {
-        await window.faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-        await window.faceapi.nets.faceLandmark68Net.loadFromUri('/models');
-        await window.faceapi.nets.faceRecognitionNet.loadFromUri('/models');
+        await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+        await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+        await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
         setModelsLoaded(true);
         console.log('Face models loaded');
       } catch (err) {
@@ -61,14 +62,14 @@ const EmployeeDashboard = () => {
       img.onload = resolve;
       img.onerror = reject;
     });
-    const detection = await window.faceapi.detectSingleFace(img, new window.faceapi.TinyFaceDetectorOptions())
+    const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
       .withFaceLandmarks()
       .withFaceDescriptor();
     if (!detection) return false;
     const capturedDescriptor = detection.descriptor;
     const storedDescriptor = JSON.parse(localStorage.getItem(storedDescriptorKey));
     if (!storedDescriptor) return false;
-    const distance = window.faceapi.euclideanDistance(capturedDescriptor, storedDescriptor);
+    const distance = faceapi.euclideanDistance(capturedDescriptor, storedDescriptor);
     return distance < 0.6;
   };
 
@@ -321,7 +322,15 @@ const EmployeeDashboard = () => {
           <div className="card attendance-history">
             <h3>Attendance History</h3>
             <table className="attendance-table">
-              <thead><tr><th>Date</th><th>Login</th><th>Logout</th><th>Hours</th><th>Status</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Login</th>
+                  <th>Logout</th>
+                  <th>Hours</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
               <tbody>
                 {attendanceHistory.map((record, idx) => (
                   <tr key={idx}>
