@@ -6,8 +6,6 @@ import {
   getLeaveRequests,
   updateLeaveRequestStatus
 } from '../../utils/adminDataService';
-import api from '../../utils/api';   // add this line at the top
-
 const Analytics = () => {
   const [trendData, setTrendData] = useState([]);
   const [deptPerformance, setDeptPerformance] = useState([]);

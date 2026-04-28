@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import '../../index.css';
 import api from '../../utils/api';
+import '../../index.css';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -22,7 +22,7 @@ const Register = () => {
   const [location, setLocation] = useState(null);
   const [locationStatus, setLocationStatus] = useState('prompt');
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { login } = useAuth();
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -58,7 +58,7 @@ const Register = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -80,12 +80,18 @@ const Register = () => {
       department: formData.department,
       position: formData.position,
       photo: photo,
-      registeredAt: new Date().toISOString(),
       location: location || { lat: null, lng: null, address: 'Not captured' }
     };
-    register(userData);
-    alert('Registration successful! Please login.');
-    navigate('/login');
+
+    try {
+      const res = await api.post('/auth/register', userData);
+      const { token, user } = res.data;
+      localStorage.setItem('token', token);
+      login(user, token, user.role);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Registration failed');
+    }
   };
 
   const departments = ['Select department', 'Engineering', 'Human Resources', 'Sales', 'Marketing', 'Finance', 'Operations', 'Customer Support', 'Administration'];
@@ -124,14 +130,14 @@ const Register = () => {
             <div style={{ position: 'relative' }}>
               <label>Password</label>
               <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} required style={{ paddingRight: '50px' }} />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '-120px', top: '25px', background: 'none', border: 'none' }}>{showPassword ? '🙈' : '👁️'}</button>
+              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '-125px', top: '25px', background: 'none', border: 'none' }}>{showPassword ? '🙈' : '👁️'}</button>
             </div>
             <div style={{ position: 'relative' }}>
               <label>Confirm Password</label>
               <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required style={{ paddingRight: '50px' }} />
-              <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: 'absolute', right: '-120px', top: '25px', background: 'none', border: 'none' }}>{showConfirmPassword ? '🙈' : '👁️'}</button>
+              <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: 'absolute', right: '-125px', top: '25px', background: 'none', border: 'none' }}>{showConfirmPassword ? '🙈' : '👁️'}</button>
             </div>
-            <div><label>Phone</label><input type="text" name="phone" value={formData.phone} onChange={handleChange} placeholder="e.g., +91 0000000000" /></div>
+            <div><label>Phone</label><input type="text" name="phone" value={formData.phone} onChange={handleChange} placeholder="e.g., +91 9876543210" /></div>
             <div><label>Address</label><textarea name="address" value={formData.address} onChange={handleChange} placeholder="Street, City, State, ZIP Code" rows="3" style={addressStyles} /></div>
             <div><label>Department</label><select name="department" value={formData.department} onChange={handleChange} required>{departments.map((d,i) => <option key={i} value={d === 'Select department' ? '' : d}>{d}</option>)}</select></div>
             <div><label>Position</label><select name="position" value={formData.position} onChange={handleChange} required>{positions.map((p,i) => <option key={i} value={p === 'Select position' ? '' : p}>{p}</option>)}</select></div>

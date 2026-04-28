@@ -8,7 +8,6 @@ import {
   getMonthlyAttendanceWithLate,
   getDepartmentAttendancePercentage
 } from '../../utils/adminDataService';
-import api from '../../utils/api';   // add this line at the top
 
 const AdminDashboard = () => {
   const [totalEmployees, setTotalEmployees] = useState(0);

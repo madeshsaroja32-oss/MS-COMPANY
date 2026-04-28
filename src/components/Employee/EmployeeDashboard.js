@@ -5,7 +5,6 @@ import Webcam from 'react-webcam';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { getAttendanceRecords, getEmployees, addAttendanceRecord } from '../../utils/adminDataService';
 import './EmployeeDashboard.css';
-import api from '../../utils/api';   // add this line at the top
 
 const EmployeeDashboard = () => {
   const { user, logout } = useAuth();

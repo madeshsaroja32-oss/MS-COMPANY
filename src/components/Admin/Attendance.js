@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { getAttendanceRecords, getEmployees } from '../../utils/adminDataService';
-import api from '../../utils/api';   // add this line at the top
 const Attendance = () => {
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [search, setSearch] = useState('');
