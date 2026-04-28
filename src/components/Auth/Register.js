@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import '../../index.css';
 
@@ -22,7 +21,6 @@ const Register = () => {
   const [location, setLocation] = useState(null);
   const [locationStatus, setLocationStatus] = useState('prompt');
   const navigate = useNavigate();
-  const { login } = useAuth();
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -84,11 +82,9 @@ const Register = () => {
     };
 
     try {
-      const res = await api.post('/auth/register', userData);
-      const { token, user } = res.data;
-      localStorage.setItem('token', token);
-      login(user, token, user.role);
-      navigate('/dashboard');
+      await api.post('/auth/register', userData);
+      alert('Registration successful! Please login.');
+      navigate('/login');
     } catch (err) {
       setError(err.response?.data?.msg || 'Registration failed');
     }

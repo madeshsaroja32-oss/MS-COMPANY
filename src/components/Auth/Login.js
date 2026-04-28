@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../utils/api';
 import '../../App.css';
+// eslint-disable-next-line no-unused-vars
+import api from '../../utils/api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -25,38 +26,59 @@ const Login = () => {
     }
   }, []);
 
-  // Quick admin demo (optional – uses localStorage, not backend)
+  // Get admin credentials (default or from localStorage)
   const getAdminCredentials = () => {
     const stored = localStorage.getItem('adminCredentials');
     if (stored) return JSON.parse(stored);
     return { email: 'admin@mscompany.com', password: 'admin123' };
   };
 
-  const handleSubmit = async (e) => {
+  // Regular login (employee or admin via form)
+  const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
 
-    // Admin demo login (bypasses backend)
     const adminCreds = getAdminCredentials();
     if (email === adminCreds.email && password === adminCreds.password) {
+      // Admin login via form
       const adminData = { name: 'Administrator', email: adminCreds.email, role: 'admin' };
       login(adminData, 'admin-token', 'admin');
       navigate('/admin');
       return;
     }
 
-    // Normal employee login via backend
-    try {
-      const res = await api.post('/auth/login', { email, password });
-      const { token, user } = res.data;
-      localStorage.setItem('token', token);
-      login(user, token, user.role);
-      navigate(user.role === 'admin' ? '/admin' : '/dashboard');
-    } catch (err) {
-      setError(err.response?.data?.msg || 'Invalid email or password');
+    // Employee login
+    const registeredUser = JSON.parse(localStorage.getItem('registeredUser'));
+    if (!registeredUser) {
+      setError('No registered user found. Please register first.');
+      return;
+    }
+
+    if (email === registeredUser.email && password === registeredUser.password) {
+      // Get the employee ID from admin_employees list (or fallback to timestamp)
+      const employees = JSON.parse(localStorage.getItem('admin_employees')) || [];
+      const emp = employees.find(e => e.email === email);
+      const employeeId = emp ? emp.id : Date.now();
+
+      const userData = {
+        id: employeeId,
+        name: registeredUser.name,
+        email: registeredUser.email,
+        phone: registeredUser.phone,
+        department: registeredUser.department,
+        position: registeredUser.position,
+        photo: registeredUser.photo,
+        address: registeredUser.address,
+        role: 'employee'
+      };
+      login(userData, 'mock-user-token', 'employee');
+      navigate('/dashboard');
+    } else {
+      setError('Invalid email or password');
     }
   };
 
+  // Direct admin login (no form submission)
   const handleDirectAdminLogin = () => {
     const adminCreds = getAdminCredentials();
     const adminData = { name: 'Administrator', email: adminCreds.email, role: 'admin' };
@@ -85,20 +107,8 @@ const Login = () => {
           <div><label>Email</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
           <div style={{ position: 'relative' }}>
             <label>Password</label>
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              style={{ paddingRight: '50px' }}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              style={{ position: 'absolute', right: '-125px', top: '25px', background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              {showPassword ? '🙈' : '👁️'}
-            </button>
+            <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required style={{ paddingRight: '50px' }} />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '-125px', top: '25px', background: 'none', border: 'none', cursor: 'pointer' }}>{showPassword ? '🙈' : '👁️'}</button>
           </div>
           <button type="submit">Next</button>
         </form>
