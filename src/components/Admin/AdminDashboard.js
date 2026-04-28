@@ -8,6 +8,7 @@ import {
   getMonthlyAttendanceWithLate,
   getDepartmentAttendancePercentage
 } from '../../utils/adminDataService';
+import api from '../../utils/api';   // add this line at the top
 
 const AdminDashboard = () => {
   const [totalEmployees, setTotalEmployees] = useState(0);
@@ -42,12 +43,10 @@ const AdminDashboard = () => {
     loadDashboardData();
   }, []);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     loadDashboardData();
   }, [selectedYear, selectedMonth]);
 
-  // Scroll to bottom function
   const scrollToBottom = () => {
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
   };
@@ -58,7 +57,7 @@ const AdminDashboard = () => {
 
   const styles = {
     container: { background: '#f8fafc', minHeight: '100vh', padding: '24px' },
-    wrapper: { maxWidth: '1180px', margin: '0 auto' },
+    wrapper: { maxWidth: '1400px', margin: '0 auto' },
     header: { marginBottom: '32px' },
     title: { fontSize: '28px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' },
     subtitle: { color: '#475569' },
@@ -96,7 +95,6 @@ const AdminDashboard = () => {
       boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
       transition: 'background 0.2s',
     },
-    '@media (max-width: 900px)': { splitGrid: { gridTemplateColumns: '1fr' } },
   };
 
   return (
@@ -107,7 +105,6 @@ const AdminDashboard = () => {
           <p style={styles.subtitle}>Overview of workforce and attendance</p>
         </div>
 
-        {/* 4 metric cards */}
         <div style={styles.metricsGrid}>
           <div style={styles.metricCard('#3b82f6')}><div style={styles.metricLabel}>Total Employees</div><div style={styles.metricValue}>{totalEmployees}</div></div>
           <div style={styles.metricCard('#22c55e')}><div style={styles.metricLabel}>Present Today</div><div style={styles.metricValue}>{presentToday}</div></div>
@@ -115,14 +112,11 @@ const AdminDashboard = () => {
           <div style={styles.metricCard('#ef4444')}><div style={styles.metricLabel}>Absent</div><div style={styles.metricValue}>{absentToday}</div></div>
         </div>
 
-        {/* Scroll Down Button */}
         <button onClick={scrollToBottom} style={styles.scrollButton}>
           ↓ Scroll Down to Charts & Department Data
         </button>
 
-        {/* Split screen: Left = Monthly Attendance, Right = Department % */}
         <div style={styles.splitGrid}>
-          {/* Left: Monthly Attendance Chart */}
           <div style={styles.chartCard}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
               <h3 style={styles.chartTitle}>Monthly Attendance</h3>
@@ -153,7 +147,6 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Right: Department Attendance % */}
           <div style={styles.chartCard}>
             <h3 style={styles.chartTitle}>Department Attendance %</h3>
             {departmentData.map((dept, idx) => (

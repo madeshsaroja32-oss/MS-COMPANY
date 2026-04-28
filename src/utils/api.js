@@ -1,40 +1,23 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './context/AuthContext';
-import Navbar from './components/Layout/Navbar';
-import Login from './components/Auth/Login';
-import Register from './components/Auth/Register';
-import EmployeeDashboard from './components/Employee/EmployeeDashboard';
-import AdminLayout from './components/Admin/AdminLayout';
-import AdminDashboard from './components/Admin/AdminDashboard';
+// src/utils/api.js
+import axios from 'axios';
 
-const PrivateRoute = ({ children, allowedRoles }) => {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" />;
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" />;
-  }
-  return children;
-};
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-function App() {
-  const { loading } = useAuth();
-  if (loading) return <div>Loading...</div>;
+const api = axios.create({
+  baseURL: API_URL,
+  headers: { 'Content-Type': 'application/json' },
+});
 
-  return (
-    <BrowserRouter>
-      <Navbar />
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<PrivateRoute allowedRoles={['employee', 'admin']}><EmployeeDashboard /></PrivateRoute>} />
-        <Route path="/admin" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout /></PrivateRoute>}>
-          <Route index element={<AdminDashboard />} />
-        </Route>
-        <Route path="/" element={<Navigate to="/dashboard" />} />
-      </Routes>
-    </BrowserRouter>
-  );
-}
+// Attach token to every request
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-export default App;
+export default api;

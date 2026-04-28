@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import '../../index.css';
+import api from '../../utils/api';
 
 const Register = () => {
   const [formData, setFormData] = useState({

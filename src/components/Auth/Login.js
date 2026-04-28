@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import '../../App.css';
+// eslint-disable-next-line no-unused-vars
+import api from '../../utils/api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -53,14 +55,20 @@ const Login = () => {
     }
 
     if (email === registeredUser.email && password === registeredUser.password) {
+      // Get the employee ID from admin_employees list (or fallback to timestamp)
+      const employees = JSON.parse(localStorage.getItem('admin_employees')) || [];
+      const emp = employees.find(e => e.email === email);
+      const employeeId = emp ? emp.id : Date.now();
+
       const userData = {
+        id: employeeId,
         name: registeredUser.name,
         email: registeredUser.email,
         phone: registeredUser.phone,
         department: registeredUser.department,
         position: registeredUser.position,
         photo: registeredUser.photo,
-        address: registeredUser.address,   // 👈 ADDED: include address
+        address: registeredUser.address,
         role: 'employee'
       };
       login(userData, 'mock-user-token', 'employee');
@@ -100,7 +108,7 @@ const Login = () => {
           <div style={{ position: 'relative' }}>
             <label>Password</label>
             <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required style={{ paddingRight: '50px' }} />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '-120px', top: '25px', background: 'none', border: 'none', cursor: 'pointer' }}>{showPassword ? '🙈' : '👁️'}</button>
+            <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '-125px', top: '25px', background: 'none', border: 'none', cursor: 'pointer' }}>{showPassword ? '🙈' : '👁️'}</button>
           </div>
           <button type="submit">Next</button>
         </form>

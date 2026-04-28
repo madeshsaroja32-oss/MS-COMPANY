@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getEmployees, deleteEmployee, addEmployee } from '../../utils/adminDataService';
-
+import api from '../../utils/api';   // add this line at the top
 const Employees = () => {
   const [employees, setEmployees] = useState([]);
   const [search, setSearch] = useState('');

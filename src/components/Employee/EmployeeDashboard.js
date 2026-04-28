@@ -3,13 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Webcam from 'react-webcam';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { addAttendanceRecord, getAttendanceRecords, getEmployees } from '../../utils/adminDataService';
+import { getAttendanceRecords, getEmployees, addAttendanceRecord } from '../../utils/adminDataService';
 import './EmployeeDashboard.css';
+import api from '../../utils/api';   // add this line at the top
 
 const EmployeeDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(null);
+  const [attendanceHistory, setAttendanceHistory] = useState([]);
+  const [presentPercentage, setPresentPercentage] = useState(0);
+  const [leaveRequests, setLeaveRequests] = useState([]);
 
   // Leave request state
   const [leaveRequest, setLeaveRequest] = useState({
@@ -20,9 +24,6 @@ const EmployeeDashboard = () => {
   const [leaveError, setLeaveError] = useState('');
   const [leaveSuccess, setLeaveSuccess] = useState('');
 
-  // Attendance history (loaded from localStorage)
-  const [attendanceHistory, setAttendanceHistory] = useState([]);
-
   // Webcam modal state
   const [showWebcamModal, setShowWebcamModal] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
@@ -30,32 +31,66 @@ const EmployeeDashboard = () => {
   const [loginMessage, setLoginMessage] = useState('');
   const webcamRef = useRef(null);
 
-  // Load attendance history from localStorage on mount
+  // Polling interval reference
+  const intervalRef = useRef(null);
+
+  // Load real attendance records for the logged-in employee
   const loadAttendanceHistory = () => {
-    const records = getAttendanceRecords();
-    const employees = getEmployees();
-    const enriched = records.map(rec => {
-      const emp = employees.find(e => e.id === rec.employeeId);
-      return { ...rec, employeeName: emp?.name || 'Unknown', department: emp?.department || 'Unknown' };
-    });
-    enriched.sort((a, b) => new Date(b.date) - new Date(a.date));
-    setAttendanceHistory(enriched);
+    if (!currentUser) return;
+    const allRecords = getAttendanceRecords();
+    const employeeRecords = allRecords.filter(rec => rec.employeeId === currentUser.id);
+    employeeRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+    setAttendanceHistory(employeeRecords);
+    const total = employeeRecords.length;
+    const present = employeeRecords.filter(rec => rec.status === 'Present').length;
+    setPresentPercentage(total > 0 ? (present / total) * 100 : 0);
+  };
+
+  // Load leave requests for this employee
+  const loadLeaveRequests = () => {
+    if (!currentUser) return;
+    const allLeaveRequests = JSON.parse(localStorage.getItem('admin_leave_requests')) || [];
+    const myRequests = allLeaveRequests.filter(req => req.employeeId === currentUser.id);
+    myRequests.sort((a, b) => b.id - a.id); // newest first
+    setLeaveRequests(myRequests);
+  };
+
+  // Combined data load (attendance + leave requests)
+  const refreshAllData = () => {
+    loadAttendanceHistory();
+    loadLeaveRequests();
   };
 
   useEffect(() => {
-    loadAttendanceHistory();
-  }, []);
+    if (!user) {
+      navigate('/login');
+    } else {
+      // Ensure currentUser has an id; if not, try to find/assign one
+      if (!user.id) {
+        const employees = getEmployees();
+        const emp = employees.find(e => e.email === user.email);
+        if (emp) user.id = emp.id;
+      }
+      setCurrentUser(user);
+      refreshAllData();
 
-  // Calculate present percentage for pie chart
-  const totalDays = attendanceHistory.length;
-  const presentDays = attendanceHistory.filter(record => record.status === 'Present').length;
-  const presentPercentage = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
-  const absentPercentage = 100 - presentPercentage;
+      // Set up polling every 30 seconds to check for status changes (without page refresh)
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(() => {
+        // Only refresh if the user is still logged in
+        if (currentUser) {
+          loadLeaveRequests();    // refresh leave requests (status may have changed)
+          loadAttendanceHistory(); // also refresh attendance if needed
+        }
+      }, 30000); // every 30 seconds
+    }
 
-  const pieData = [
-    { name: 'Present', value: presentPercentage, color: '#4caf50' },
-    { name: 'Absent/Late', value: absentPercentage, color: '#ff9800' },
-  ];
+    // Cleanup interval on unmount
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, navigate]);
 
   // Calendar state (unchanged)
   const today = new Date();
@@ -101,14 +136,6 @@ const EmployeeDashboard = () => {
   const handleMonthChange = (e) => setSelectedMonth(parseInt(e.target.value));
   const handleYearChange = (e) => setSelectedYear(parseInt(e.target.value));
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-    } else {
-      setCurrentUser(user);
-    }
-  }, [user, navigate]);
-
   const handleLeaveChange = (e) => {
     setLeaveRequest({ ...leaveRequest, [e.target.name]: e.target.value });
   };
@@ -121,12 +148,8 @@ const EmployeeDashboard = () => {
     }
 
     const currentUserData = JSON.parse(localStorage.getItem('currentUser')) || user;
-    const employeeId = currentUserData?.id || (() => {
-      const employees = JSON.parse(localStorage.getItem('admin_employees')) || [];
-      const found = employees.find(emp => emp.email === currentUserData?.email);
-      return found ? found.id : Date.now();
-    })();
-    const employeeName = currentUserData?.name || currentUserData?.email?.split('@')[0] || 'Employee';
+    const employeeId = currentUserData?.id || currentUser?.id;
+    const employeeName = currentUserData?.name || currentUser?.name || 'Employee';
 
     const newRequest = {
       id: Date.now(),
@@ -145,6 +168,7 @@ const EmployeeDashboard = () => {
     setLeaveSuccess('Leave request submitted!');
     setLeaveError('');
     setLeaveRequest({ startDate: '', endDate: '', reason: '' });
+    loadLeaveRequests(); // refresh immediately
     setTimeout(() => setLeaveSuccess(''), 3000);
   };
 
@@ -170,27 +194,33 @@ const EmployeeDashboard = () => {
       return;
     }
 
-    // Save attendance record with photo
     const now = new Date();
     const loginTime = now.toLocaleTimeString();
     const todayDate = now.toISOString().split('T')[0];
+    const loginHour = now.getHours();
+    const loginMinute = now.getMinutes();
+
+    let status = 'Present';
+    if (loginHour > 9 || (loginHour === 9 && loginMinute > 0)) {
+      status = 'Late';
+    }
+
     const newRecord = {
+      id: Date.now(),
       employeeId: currentUser.id,
       employeeName: currentUser.name,
       date: todayDate,
       loginTime,
       logoutTime: null,
       hours: null,
-      status: 'Present',
+      status,
       location: currentUser.location?.address || 'From webcam',
-      photo: capturedImage,   // base64 image
+      photo: capturedImage,
     };
     addAttendanceRecord(newRecord);
-    
-    // Refresh attendance history
     loadAttendanceHistory();
-    
-    setLoginMessage(`Login recorded at ${loginTime}`);
+
+    setLoginMessage(`Login recorded at ${loginTime} (${status})`);
     setTimeout(() => {
       setShowWebcamModal(false);
       setLoginMessage('');
@@ -198,6 +228,33 @@ const EmployeeDashboard = () => {
   };
 
   if (!currentUser) return <div className="loading">Loading...</div>;
+
+  const pieData = [
+    { name: 'Present', value: presentPercentage, color: '#4caf50' },
+    { name: 'Absent/Late', value: 100 - presentPercentage, color: '#ff9800' },
+  ];
+
+  const statusBadge = (status) => {
+    const colors = {
+      Pending: '#fef9c3',
+      Approved: '#dcfce7',
+      Rejected: '#fee2e2'
+    };
+    const textColors = {
+      Pending: '#854d0e',
+      Approved: '#166534',
+      Rejected: '#991b1b'
+    };
+    return {
+      background: colors[status] || '#e2e8f0',
+      color: textColors[status] || '#1e293b',
+      padding: '4px 8px',
+      borderRadius: '20px',
+      fontSize: '12px',
+      fontWeight: '500',
+      display: 'inline-block'
+    };
+  };
 
   return (
     <div className="employee-dashboard-new">
@@ -240,6 +297,34 @@ const EmployeeDashboard = () => {
               <div><label>Reason</label><textarea name="reason" value={leaveRequest.reason} onChange={handleLeaveChange} required rows="2"></textarea></div>
               <button type="submit">Submit Request</button>
             </form>
+          </div>
+
+          <div className="card leave-requests-list">
+            <h3>My Leave Requests</h3>
+            {leaveRequests.length === 0 ? (
+              <p>No leave requests submitted.</p>
+            ) : (
+              <table className="attendance-table">
+                <thead>
+                  <tr>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaveRequests.map(req => (
+                    <tr key={req.id}>
+                      <td>{req.startDate}</td>
+                      <td>{req.endDate}</td>
+                      <td>{req.reason}</td>
+                      <td><span style={statusBadge(req.status)}>{req.status}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
@@ -298,17 +383,20 @@ const EmployeeDashboard = () => {
                     <td>{record.date}</td>
                     <td>{record.loginTime || '-'}</td>
                     <td>{record.logoutTime || '-'}</td>
-                    <td>{record.hours || '-'}</td>
+                    <td>{record.hours ? `${record.hours}h` : '-'}</td>
                     <td>{record.status}</td>
                   </tr>
                 ))}
+                {attendanceHistory.length === 0 && (
+                  <tr><td colSpan="5" style={{ textAlign: 'center' }}>No attendance records found</td></tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
 
-      {/* Webcam Modal with manual confirmation only */}
+      {/* Webcam Modal */}
       {showWebcamModal && (
         <div className="modal-overlay">
           <div className="modal-content">
